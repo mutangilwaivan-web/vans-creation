@@ -55,36 +55,14 @@ export const HeroSection: React.FC = () => {
   return (
     <section 
       id="hero-poster-view"
-      className="relative w-full min-h-[100dvh] lg:h-[100dvh] lg:max-h-[100dvh] bg-[#FAF8F5] text-[#1A1A18] overflow-hidden flex flex-col justify-between select-none"
+      className="relative w-full min-h-[100dvh] bg-[#FAF8F5] text-[#1A1A18] overflow-hidden flex flex-col justify-between select-none"
     >
-      {/* ========================================================================= */}
-      {/* DESKTOP & TABLET BACKGROUND MODEL BLEND (Screen >= md)                     */}
-      {/* Seamless edge blend on large screens                                      */}
-      {/* ========================================================================= */}
-      <div 
-        id="hero-desktop-model-container"
-        className="hidden md:flex absolute bottom-0 right-0 w-[55vw] lg:w-[50vw] xl:w-[46vw] h-full z-0 pointer-events-none items-end justify-end overflow-hidden"
-      >
-        <div className="relative w-full h-full">
-          <img
-            src="/images/vanessa-hero.jpg"
-            alt="Vanessa Kaniki — Van's Creation Haute Couture"
-            className={`w-full h-full object-cover object-top lg:object-center filter brightness-[1.03] contrast-[1.06] saturate-[1.06] transition-opacity duration-1000 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-            onLoad={() => setImageLoaded(true)}
-          />
-          {/* Seamless Edge Blends for Desktop */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#FAF8F5] via-[#FAF8F5]/80 md:via-[#FAF8F5]/40 to-transparent w-full md:w-[45%]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#FAF8F5] via-transparent to-[#FAF8F5]/20 h-full" />
-          <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-[#FAF8F5] to-transparent" />
-        </div>
-      </div>
-
       {/* ========================================================================= */}
       {/* 1. TOP HEADER: MONOGRAM, CITY, LIVE CLOCK & DIRECT WHATSAPP               */}
       {/* ========================================================================= */}
       <header 
         id="hero-top-header"
-        className="relative z-20 w-full px-5 sm:px-8 md:px-10 lg:px-14 pt-4 sm:pt-6 md:pt-8 flex items-center justify-between"
+        className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-8 md:px-10 lg:px-14 pt-4 sm:pt-6 md:pt-8 flex items-center justify-between"
       >
         {/* Left: Monogram V/C Brand Signature */}
         <div 
@@ -93,7 +71,7 @@ export const HeroSection: React.FC = () => {
           className="cursor-pointer group flex items-center gap-2.5 sm:gap-3 select-none"
         >
           <div 
-            className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#181512] text-[#FAF8F5] flex items-center justify-center text-sm sm:text-base border border-[#C5A880]/60 shadow-sm group-hover:bg-[#1B4332] transition-colors duration-400"
+            className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#181512] text-[#FAF8F5] flex items-center justify-center text-xs sm:text-sm font-light border border-[#C5A880]/60 shadow-sm group-hover:bg-[#1B4332] transition-colors duration-400"
             style={{ fontFamily: "'Cinzel', serif" }}
           >
             <span className="font-light">V</span>
@@ -122,7 +100,7 @@ export const HeroSection: React.FC = () => {
           className="flex items-center gap-2.5 sm:gap-4 select-none"
         >
           {/* Location & Clock */}
-          <div className="text-right leading-tight">
+          <div className="text-right leading-tight hidden xs:block">
             <div 
               className="flex items-center justify-end gap-1.5 text-[9px] sm:text-[10.5px] font-bold tracking-[0.22em] text-[#181512] uppercase"
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
@@ -143,11 +121,11 @@ export const HeroSection: React.FC = () => {
             )}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 bg-[#1B4332] hover:bg-[#143528] text-white px-3.5 py-1.5 rounded-full text-[10.5px] font-bold tracking-[0.14em] uppercase transition-all duration-300 shadow-xs hover:shadow-md cursor-pointer border border-[#2D6A4F]/40"
+            className="inline-flex items-center gap-1.5 bg-[#1B4332] hover:bg-[#143528] text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-[11px] font-bold tracking-[0.14em] uppercase transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer border border-[#2D6A4F]/40 active:scale-95"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
             <MessageCircle className="w-3.5 h-3.5 fill-current text-[#25D366]" />
-            <span className="hidden xs:inline">WhatsApp</span>
+            <span>WhatsApp</span>
           </a>
 
           {/* Admin shortcut if authenticated */}
@@ -164,30 +142,18 @@ export const HeroSection: React.FC = () => {
       </header>
 
       {/* ========================================================================= */}
-      {/* TOP RIGHT COLLECTION BADGE (DESKTOP)                                     */}
+      {/* 2. MAIN HERO BODY: PERFECTLY BALANCED & CENTERED LAYOUT                   */}
+      {/* Desktop/Tablet: 2-column split with centered model portrait              */}
+      {/* Mobile: Clean foreground model card + well-proportioned CTA button       */}
       {/* ========================================================================= */}
-      <div 
-        id="hero-collection-tag"
-        className="hidden lg:block absolute top-28 xl:top-32 right-10 lg:right-14 z-10 text-right text-[10px] sm:text-[11px] tracking-[0.24em] text-[#6B655C] uppercase leading-relaxed font-semibold select-none"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-      >
-        <div>COLLECTION 2026</div>
-        <div>PIÈCES SIGNATURES</div>
-        <div className="text-[#1B4332] font-bold">VANESSA KANIKI</div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 2. MAIN HERO BODY: RESPONSIVE FOREGROUND LAYOUT (MOBILE + DESKTOP)        */}
-      {/* ========================================================================= */}
-      <div 
-        id="hero-main-title-wrap"
-        className="relative z-10 px-5 sm:px-8 md:px-10 lg:px-14 my-auto pt-3 sm:pt-4 md:pt-2 w-full max-w-5xl"
-      >
-        <div className="flex flex-col md:block space-y-3 sm:space-y-4">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-8 md:px-10 lg:px-14 py-4 sm:py-6 lg:py-4 my-auto flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8 lg:gap-12 flex-grow">
+        
+        {/* LEFT COLUMN: Haute Couture Typography & Single Clean CTA */}
+        <div className="w-full md:w-[52%] lg:w-[50%] flex flex-col justify-center space-y-3 sm:space-y-4 lg:space-y-5 text-center md:text-left">
           
           {/* Eyebrow / Creator Tag */}
           <div 
-            className="flex items-center gap-2 text-[10px] sm:text-[11px] md:text-[12px] font-bold tracking-[0.28em] sm:tracking-[0.32em] text-[#1B4332] uppercase pl-1 select-none"
+            className="flex items-center justify-center md:justify-start gap-2 text-[10px] sm:text-[11px] md:text-[12px] font-bold tracking-[0.28em] sm:tracking-[0.32em] text-[#1B4332] uppercase select-none"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
             <span className="w-5 sm:w-7 h-[1.5px] bg-[#2D6A4F]"></span>
@@ -196,7 +162,7 @@ export const HeroSection: React.FC = () => {
 
           {/* Main Monumental Haute Couture Typography */}
           <h1 
-            className="font-light text-[12.5vw] sm:text-[10vw] md:text-[8.5vw] lg:text-[7.5vw] xl:text-[8.2vw] leading-[0.88] tracking-[-0.035em] text-[#181512] uppercase select-none"
+            className="font-light text-[12vw] sm:text-[9vw] md:text-[6.5vw] lg:text-[5.5vw] xl:text-[5.8vw] leading-[0.90] tracking-[-0.035em] text-[#181512] uppercase select-none"
             style={{ fontFamily: "'Fraunces', Georgia, serif" }}
           >
             <span className="block hero-title-line">VAN'S</span>
@@ -205,104 +171,110 @@ export const HeroSection: React.FC = () => {
             </span>
           </h1>
 
-          {/* ===================================================================== */}
-          {/* MOBILE FOREGROUND MODEL SHOWCASE (Visible ONLY on Mobile < md)        */}
-          {/* Brings the photo proudly into the foreground on mobile screens        */}
-          {/* ===================================================================== */}
-          <div className="block md:hidden my-3 w-full">
-            <div className="relative w-full max-w-[310px] sm:max-w-[340px] aspect-[4/5] mx-auto rounded-[24px] overflow-hidden border border-[#C5A880]/50 shadow-[0_12px_35px_-8px_rgba(27,67,50,0.25)] bg-[#181512]">
+          {/* Mobile Portrait (shows in flow on mobile < md) */}
+          <div className="block md:hidden my-2 w-full">
+            <div className="relative w-full max-w-[280px] sm:max-w-[320px] aspect-[4/5] mx-auto rounded-3xl overflow-hidden border border-[#E8E1D7] shadow-lg bg-[#181512]">
               <img
                 src="/images/vanessa-hero.jpg"
                 alt="Vanessa Kaniki en robe émeraude Haute Couture"
-                className="w-full h-full object-cover object-top filter brightness-[1.03] contrast-[1.05]"
+                className="w-full h-full object-cover object-top filter brightness-[1.02] contrast-[1.05]"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/15 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10 pointer-events-none" />
               
-              {/* Floating Badge in Portrait */}
-              <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#181512]/85 backdrop-blur-md text-[#C5A880] text-[9px] font-bold tracking-widest uppercase border border-[#C5A880]/40">
+              <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#181512]/80 backdrop-blur-md text-[#C5A880] text-[9px] font-bold tracking-widest uppercase border border-[#C5A880]/30">
                 <Sparkles className="w-3 h-3 text-[#C5A880]" />
                 <span>Collection 2026</span>
               </div>
-
-              <div className="absolute bottom-3 inset-x-3 text-center">
-                <span 
-                  className="text-[10px] text-white/95 font-bold tracking-[0.18em] uppercase drop-shadow-sm"
-                  style={{ fontFamily: "'Cinzel', serif" }}
-                >
-                  Robe Émeraude • Sur-Mesure d'Art
-                </span>
-              </div>
             </div>
           </div>
 
-          {/* Subtitle in French & STRICTLY ONE SINGLE EXCLUSIVE PREMIUM CTA */}
-          <div className="pt-1 sm:pt-2 pl-1 space-y-4 sm:space-y-6">
-            <div 
-              className="text-[10px] sm:text-[11.5px] font-semibold tracking-[0.22em] sm:tracking-[0.26em] text-[#555048] uppercase leading-snug max-w-[290px]"
+          {/* Subtitle in French */}
+          <div 
+            className="text-[10.5px] sm:text-[12px] font-semibold tracking-[0.20em] sm:tracking-[0.24em] text-[#555048] uppercase leading-relaxed max-w-md mx-auto md:mx-0"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            <div>L'ALLIANCE DU STYLE ET DU SUR-MESURE</div>
+            <div className="font-bold text-[#1B4332] mt-0.5">
+              HAUTE COUTURE • KINSHASA
+            </div>
+          </div>
+
+          {/* SINGLE CLEAN CTA BUTTON (Properly sized on mobile & desktop) */}
+          <div className="pt-1 sm:pt-2">
+            <button
+              id="hero-exclusive-catalogue-btn"
+              onClick={handleGoToCreations}
+              className="group relative w-full sm:w-auto max-w-[300px] sm:max-w-none mx-auto md:mx-0 inline-flex items-center justify-center gap-3.5 px-7 sm:px-9 py-3.5 sm:py-4 rounded-full bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] text-[11.5px] sm:text-[12.5px] font-bold tracking-[0.18em] uppercase transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl cursor-pointer border border-[#3A322A] hover:border-[#2D6A4F]/60 active:scale-[0.98]"
+              title="Découvrir le catalogue de la Maison Van's Creation"
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
-              <div>L'ALLIANCE DU STYLE</div>
-              <div>ET DU SUR-MESURE</div>
-              <div className="font-bold text-[#1B4332]">
-                HAUTE COUTURE
+              <span>DÉCOUVRIR LE CATALOGUE</span>
+              <div className="w-5 h-5 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition-colors">
+                <ArrowRight className="w-3 h-3 text-[#C5A880] group-hover:text-white group-hover:translate-x-0.5 transition-all" />
               </div>
-            </div>
-
-            {/* ONLY ONE SINGLE CTA BUTTON */}
-            <div>
-              <button
-                id="hero-exclusive-catalogue-btn"
-                onClick={handleGoToCreations}
-                className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3.5 px-7 sm:px-10 py-4 sm:py-[18px] rounded-full bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] text-xs sm:text-[13px] font-bold tracking-[0.20em] sm:tracking-[0.22em] uppercase transition-all duration-400 transform hover:-translate-y-0.5 shadow-xl hover:shadow-2xl cursor-pointer border border-[#3A322A] hover:border-[#2D6A4F]/60 active:scale-[0.98]"
-                title="Découvrir le catalogue de la Maison Van's Creation"
-                style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-              >
-                <span>DÉCOUVRIR LE CATALOGUE</span>
-                <div className="w-5 h-5 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition-colors">
-                  <ArrowRight className="w-3 h-3 text-[#C5A880] group-hover:text-white group-hover:translate-x-0.5 transition-all" />
-                </div>
-              </button>
-            </div>
+            </button>
           </div>
 
         </div>
+
+        {/* RIGHT COLUMN: PC & Tablet Centered Model Portrait */}
+        <div className="hidden md:flex w-full md:w-[48%] lg:w-[50%] items-center justify-center">
+          <div className="relative w-full max-w-[380px] lg:max-w-[440px] xl:max-w-[470px] aspect-[3/4] rounded-3xl overflow-hidden border border-[#E8E1D7] shadow-xl bg-[#181512] group">
+            <img
+              src="/images/vanessa-hero.jpg"
+              alt="Vanessa Kaniki — Van's Creation Haute Couture"
+              className={`w-full h-full object-cover object-top lg:object-center filter brightness-[1.03] contrast-[1.06] saturate-[1.06] group-hover:scale-103 transition-transform duration-700 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              onLoad={() => setImageLoaded(true)}
+            />
+            {/* Subtle Vignette & Tag */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10 pointer-events-none" />
+            
+            <div className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#181512]/80 backdrop-blur-md text-[#C5A880] text-[9.5px] font-bold tracking-widest uppercase border border-[#C5A880]/30 shadow-sm">
+              <Sparkles className="w-3 h-3 text-[#C5A880]" />
+              <span>Collection Signature 2026</span>
+            </div>
+
+            <div className="absolute bottom-4 inset-x-4 text-center">
+              <span 
+                className="text-[11px] text-white/95 font-bold tracking-[0.18em] uppercase drop-shadow-sm"
+                style={{ fontFamily: "'Cinzel', serif" }}
+              >
+                Robe Émeraude • Sur-Mesure d'Art
+              </span>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. BOTTOM BAR: L'ATELIER, CRÉATION EN VEDETTE, CIRCULAR SCROLL BADGE       */}
+      {/* 3. BOTTOM BAR: L'ATELIER, CRÉATION EN VEDETTE, EXPLORER BUTTON           */}
       {/* ========================================================================= */}
       <footer 
         id="hero-footer-bar"
-        className="relative z-20 w-full px-5 sm:px-8 md:px-10 lg:px-14 pb-5 sm:pb-8 md:pb-10 pt-3 md:pt-0 flex flex-col md:flex-row items-start md:items-end justify-between gap-5 md:gap-8 bg-gradient-to-t from-[#FAF8F5] via-[#FAF8F5]/90 md:bg-transparent"
+        className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-8 md:px-10 lg:px-14 pb-4 sm:pb-6 md:pb-8 pt-2 md:pt-0 flex flex-col md:flex-row items-center md:items-end justify-between gap-4 md:gap-8 border-t border-[#EAE3DA]/50 md:border-t-0"
       >
         {/* Left Combined: L'ATELIER + CRÉATION EN VEDETTE */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-8 lg:gap-14 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-center sm:items-end gap-3 sm:gap-6 lg:gap-10 w-full md:w-auto text-center sm:text-left">
           
           {/* L'ATELIER / À PROPOS BLOCK */}
           <div 
             id="hero-about-us-block"
-            className="max-w-[280px] sm:max-w-[310px] space-y-1 sm:space-y-2 select-none hidden xs:block"
+            className="max-w-[280px] sm:max-w-[310px] space-y-0.5 sm:space-y-1 select-none hidden xs:block"
           >
             <div 
-              className="text-[9px] sm:text-[10px] font-bold tracking-[0.22em] uppercase text-[#8C7A6B]"
+              className="text-[8.5px] sm:text-[9.5px] font-bold tracking-[0.22em] uppercase text-[#8C7A6B]"
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
               L'ATELIER VAN'S
             </div>
             
             <h2 
-              className="text-xs sm:text-sm md:text-[15px] font-bold text-[#181512] leading-[1.35] uppercase"
+              className="text-xs sm:text-[13px] font-bold text-[#181512] leading-[1.3] uppercase"
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
               DES CRÉATIONS SUR-MESURE <span className="font-normal text-[#555048]">QUI SUBLIMENT VOTRE ÉLÉGANCE.</span>
             </h2>
-            
-            <p 
-              className="text-[11px] sm:text-[12px] text-[#6B655C] leading-relaxed line-clamp-2 md:line-clamp-3"
-              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            >
-              {settings.bio || "Van's Creation est l'atelier de haute couture et modélisme sur-mesure fondé par Vanessa Kaniki à Kinshasa."}
-            </p>
           </div>
 
           {/* CRÉATION DU MOMENT / EN VEDETTE */}
@@ -312,37 +284,34 @@ export const HeroSection: React.FC = () => {
               onClick={() => {
                 setSelectedCreationForDetail(featuredCreation);
               }}
-              className="flex items-center gap-3 sm:gap-3.5 group cursor-pointer select-none"
+              className="flex items-center gap-2.5 sm:gap-3 group cursor-pointer select-none"
               title="Voir la création du moment"
             >
-              {/* Vertical label reading upwards */}
               <div 
-                className="[writing-mode:vertical-rl] rotate-180 text-[8.5px] sm:text-[9px] font-bold tracking-[0.26em] uppercase text-[#8C7A6B] shrink-0"
+                className="[writing-mode:vertical-rl] rotate-180 text-[8px] sm:text-[8.5px] font-bold tracking-[0.24em] uppercase text-[#8C7A6B] shrink-0 hidden sm:block"
                 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
               >
-                CRÉATION EN VEDETTE
+                EN VEDETTE
               </div>
 
-              {/* Square / Vertical Thumbnail & Titles */}
-              <div className="space-y-1.5">
-                <div className="w-18 h-22 sm:w-24 sm:h-28 md:w-26 md:h-30 overflow-hidden bg-[#181512] relative border border-[#D9D3C7] group-hover:border-[#1B4332] transition-colors shadow-sm rounded-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-14 h-16 sm:w-16 sm:h-20 overflow-hidden bg-[#181512] relative border border-[#D9D3C7] group-hover:border-[#1B4332] transition-colors shadow-xs rounded-sm shrink-0">
                   <img
                     src={featuredCreation.images[0] || "/images/vanessa-hero.jpg"}
                     alt={featuredCreation.title}
                     className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500 filter contrast-[1.04]"
                   />
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
                 </div>
                 
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 text-left">
                   <h4 
-                    className="text-xs sm:text-[13px] font-semibold text-[#181512] tracking-wider uppercase truncate max-w-[110px] sm:max-w-[130px]"
+                    className="text-xs font-semibold text-[#181512] tracking-wider uppercase truncate max-w-[110px] sm:max-w-[130px]"
                     style={{ fontFamily: "'Cinzel', serif" }}
                   >
                     {featuredCreation.title || "ROBE ÉMERAUDE"}
                   </h4>
                   <p 
-                    className="text-[8.5px] sm:text-[9px] font-semibold tracking-[0.20em] text-[#8C7A6B] uppercase truncate max-w-[110px] sm:max-w-[130px]"
+                    className="text-[8.5px] font-semibold tracking-[0.18em] text-[#8C7A6B] uppercase truncate max-w-[110px] sm:max-w-[130px]"
                     style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                   >
                     {featuredCreation.categories?.[0] || 'COLLECTION GALA'}
@@ -354,27 +323,21 @@ export const HeroSection: React.FC = () => {
 
         </div>
 
-        {/* Minimalist Scroll cue (Bottom Right) */}
+        {/* Minimalist Explorer link */}
         <div 
           id="hero-scroll-badge-wrap"
-          className="self-end md:self-auto shrink-0 pt-1 sm:pt-0"
+          className="shrink-0"
         >
           <button
             id="hero-scroll-explore-badge"
             onClick={handleGoToCreations}
-            className="group flex flex-col items-center gap-1.5 cursor-pointer opacity-70 hover:opacity-100 transition-opacity"
+            className="group flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#1A1A18]/20 hover:border-[#1B4332] text-[#181512] hover:text-[#1B4332] transition-colors cursor-pointer text-[9px] font-bold tracking-[0.16em] uppercase"
             aria-label="Explorer les créations"
             title="Explorer le catalogue"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            <div className="w-9 h-9 rounded-full border border-[#1A1A18]/25 group-hover:border-[#1B4332] flex items-center justify-center transition-all group-hover:bg-[#1B4332] group-hover:text-white">
-              <ArrowDownRight className="w-3.5 h-3.5 text-[#1A1A18] group-hover:text-[#FAF8F5] group-hover:translate-x-0.5 group-hover:translate-y-0.5 transition-all" />
-            </div>
-            <span 
-              className="text-[8px] font-semibold tracking-[0.22em] text-[#8C7A6B] uppercase"
-              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            >
-              EXPLORER
-            </span>
+            <span>EXPLORER LA GALERIE</span>
+            <ArrowDownRight className="w-3.5 h-3.5 text-[#1B4332] group-hover:translate-x-0.5 group-hover:translate-y-0.5 transition-transform" />
           </button>
         </div>
 
