@@ -1,0 +1,203 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --cream: #FAF8F5;
+    --cream-deep: #F0EBE3;
+    --ink: #1A1A18;
+    --ink-soft: #555048;
+    --ink-muted: #8C7A6B;
+    --emerald: #1B4332;
+    --emerald-light: #2D6A4F;
+    --gold: #C5A880;
+    --gold-light: #D4BC9A;
+    --wine: #6E2333;
+    --line: rgba(26,26,24,0.12);
+    --font-serif: 'Cormorant Garamond', Georgia, serif;
+    --font-cinzel: 'Cinzel', serif;
+    --font-fraunces: 'Fraunces', 'Playfair Display', Georgia, serif;
+    --font-playfair: 'Playfair Display', Georgia, serif;
+    --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Smoother default text rendering */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    background-color: #FAF8F5;
+    color: #1A1A18;
+    overflow-x: hidden;
+  }
+
+  /* Accessible focus rings */
+  *:focus-visible {
+    outline: 2px solid var(--emerald);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* =============================== */
+/* TYPOGRAPHY UTILITY CLASSES       */
+/* =============================== */
+
+.font-inter {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.font-serif {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-fraunces {
+  font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
+}
+
+.font-playfair {
+  font-family: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', serif;
+}
+
+.font-sans {
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* =============================== */
+/* CUSTOM SCROLLBAR                 */
+/* =============================== */
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FAF8F5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D8CFC4;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #C5A880;
+}
+
+/* =============================== */
+/* HERO SECTION ANIMATIONS          */
+/* =============================== */
+
+.hero-title-line {
+  animation: heroTitleReveal 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+@keyframes heroTitleReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =============================== */
+/* MARQUEE ANIMATION                */
+/* =============================== */
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 35s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* =============================== */
+/* FLOATING ANIMATION               */
+/* =============================== */
+
+@keyframes float-subtle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-float {
+  animation: float-subtle 4s ease-in-out infinite;
+}
+
+/* =============================== */
+/* SELECTION STYLING                */
+/* =============================== */
+
+::selection {
+  background-color: rgba(27, 67, 50, 0.15);
+  color: #1A1A18;
+}
+
+/* =============================== */
+/* RESPONSIVE REFINEMENTS           */
+/* =============================== */
+
+html, body {
+  overflow-x: hidden;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  a.inline-link,
+  button[aria-label],
+  .hero-title-line {
+    min-height: unset;
+    min-width: unset;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-title-line,
+  .animate-marquee,
+  .animate-float {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+  
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

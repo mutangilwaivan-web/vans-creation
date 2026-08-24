@@ -1,0 +1,116 @@
+{
+  "entities": {
+    "Creation": {
+      "title": "Creation",
+      "description": "A garment or bespoke couture creation made by Maison Van's Creation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "description": { "type": "string" },
+        "longDescription": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "videoThumbnail": { "type": "string" },
+        "category": { "type": "string" },
+        "occasion": { "type": "string" },
+        "fabric": { "type": "string" },
+        "priceEstimate": { "type": "string" },
+        "leadTimeDays": { "type": "number" },
+        "isFeatured": { "type": "boolean" },
+        "misEnAvant": { "type": "boolean" },
+        "tags": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "imageUrl", "category"]
+    },
+    "Inspiration": {
+      "title": "Inspiration",
+      "description": "Style inspirations and catalogue moodboards",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "category": { "type": "string" },
+        "source": { "type": "string" },
+        "isCustomizable": { "type": "boolean" }
+      },
+      "required": ["id", "title", "imageUrl"]
+    },
+    "Occasion": {
+      "title": "Occasion",
+      "description": "Ceremonies and event categories for dress selection",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "icon": { "type": "string" },
+        "accentColor": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Testimonial": {
+      "title": "Testimonial",
+      "description": "Client reviews and testimonials",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientName": { "type": "string" },
+        "roleOrOccasion": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "date": { "type": "string" },
+        "avatarUrl": { "type": "string" }
+      },
+      "required": ["id", "clientName", "comment"]
+    },
+    "StudioSettings": {
+      "title": "StudioSettings",
+      "description": "Atelier configuration and contact settings",
+      "type": "object",
+      "properties": {
+        "studioName": { "type": "string" },
+        "designerName": { "type": "string" },
+        "headline": { "type": "string" },
+        "subheadline": { "type": "string" },
+        "bio": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "email": { "type": "string" },
+        "instagram": { "type": "string" },
+        "pinterest": { "type": "string" },
+        "address": { "type": "string" },
+        "city": { "type": "string" },
+        "creationsCount": { "type": "number" },
+        "satisfactionRate": { "type": "number" }
+      },
+      "required": ["studioName", "designerName", "whatsappNumber", "email"]
+    }
+  },
+  "firestore": {
+    "/creations/{creationId}": {
+      "schema": "Creation",
+      "description": "Collection of couture creations and catalogue items"
+    },
+    "/inspirations/{inspirationId}": {
+      "schema": "Inspiration",
+      "description": "Collection of inspiration boards and style catalogs"
+    },
+    "/occasions/{occasionId}": {
+      "schema": "Occasion",
+      "description": "Event occasions and categories"
+    },
+    "/testimonials/{testimonialId}": {
+      "schema": "Testimonial",
+      "description": "Client feedback and testimonials"
+    },
+    "/settings/{settingId}": {
+      "schema": "StudioSettings",
+      "description": "Atelier settings and contact configuration"
+    }
+  }
+}

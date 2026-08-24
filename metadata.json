@@ -1,0 +1,7 @@
+{
+  "name": "Atelier Digital - Modéliste Couturière",
+  "description": "Atelier digital haute couture et sur-mesure pour modéliste-couturière indépendante : catalogue de créations, carnet d'inspirations, conversion WhatsApp en 1 clic et espace d'administration complet.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
