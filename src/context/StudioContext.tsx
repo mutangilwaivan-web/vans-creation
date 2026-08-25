@@ -9,7 +9,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db, auth, onAuthStateChanged } from '../lib/firebase';
-import { Creation, Inspiration, Occasion, Testimonial, StudioSettings, ActiveTab } from '../types';
+import { Creation, CreationComment, Inspiration, Occasion, Testimonial, StudioSettings, ActiveTab } from '../types';
 import { 
   INITIAL_CREATIONS, 
   INITIAL_INSPIRATIONS, 
@@ -36,6 +36,11 @@ interface StudioContextType {
   setAdminAuthenticated: (auth: boolean) => void;
   isFirebaseConnected: boolean;
   
+  // Likes & Comments
+  likedCreationIds: string[];
+  toggleLikeCreation: (creationId: string) => Promise<void>;
+  addCreationComment: (creationId: string, comment: Omit<CreationComment, 'id' | 'createdAt'>) => Promise<void>;
+
   // CRUD Actions
   addCreation: (creation: Omit<Creation, 'id' | 'createdAt' | 'slug'>) => Promise<void>;
   updateCreation: (id: string, data: Partial<Creation>) => Promise<void>;
@@ -64,7 +69,7 @@ interface StudioContextType {
 
 const STORAGE_KEY = 'maison_vans_atelier_data_v1';
 
-// Helper to normalize creation documents (handles misEnAvant, isFeatured, etc.)
+// Helper to normalize creation documents (handles misEnAvant, isFeatured, likes, comments, etc.)
 export const normalizeCreation = (id: string, data: any): Creation => {
   const isFeaturedValue = Boolean(
     data.misEnAvant === true || 
@@ -98,6 +103,8 @@ export const normalizeCreation = (id: string, data: any): Creation => {
     customOptions: Array.isArray(data.customOptions) ? data.customOptions : ['Ajustements sur-mesure'],
     isFeatured: isFeaturedValue,
     misEnAvant: isFeaturedValue,
+    likesCount: typeof data.likesCount === 'number' ? data.likesCount : (data.likes || 18),
+    comments: Array.isArray(data.comments) ? data.comments : [],
     createdAt: data.createdAt || data.dateCreation || new Date().toISOString().split('T')[0],
   };
 };
@@ -166,6 +173,14 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return localStorage.getItem(`${STORAGE_KEY}_admin_auth`) === 'true';
   });
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
+  const [likedCreationIds, setLikedCreationIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_liked_creations`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Monitor Firebase Auth state securely
   useEffect(() => {
@@ -432,6 +447,75 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const toggleLikeCreation = async (creationId: string) => {
+    const isLiked = likedCreationIds.includes(creationId);
+    const nextLikedIds = isLiked
+      ? likedCreationIds.filter(id => id !== creationId)
+      : [...likedCreationIds, creationId];
+    
+    setLikedCreationIds(nextLikedIds);
+    localStorage.setItem(`${STORAGE_KEY}_liked_creations`, JSON.stringify(nextLikedIds));
+
+    // Update creations in local state optimistically
+    let updatedLikesCount = 0;
+    setCreations(prev => prev.map(c => {
+      if (c.id === creationId) {
+        const currentLikes = c.likesCount || 0;
+        updatedLikesCount = isLiked ? Math.max(0, currentLikes - 1) : currentLikes + 1;
+        return { ...c, likesCount: updatedLikesCount };
+      }
+      return c;
+    }));
+
+    if (selectedCreationForDetail?.id === creationId) {
+      setSelectedCreationForDetail(prev => prev ? {
+        ...prev,
+        likesCount: updatedLikesCount
+      } : null);
+    }
+
+    try {
+      await setDoc(doc(db, 'creations', creationId), { likesCount: updatedLikesCount }, { merge: true });
+    } catch (e) {
+      console.warn('Firestore like update note (saved locally):', e);
+    }
+  };
+
+  const addCreationComment = async (creationId: string, commentData: Omit<CreationComment, 'id' | 'createdAt'>) => {
+    const newComment: CreationComment = {
+      id: `comm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      authorName: commentData.authorName.trim() || 'Visiteuse de l’Atelier',
+      authorLocation: commentData.authorLocation?.trim() || 'Kinshasa',
+      content: commentData.content.trim(),
+      rating: commentData.rating || 5,
+      createdAt: new Date().toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }),
+      isApproved: true,
+    };
+
+    let updatedComments: CreationComment[] = [];
+
+    setCreations(prev => prev.map(c => {
+      if (c.id === creationId) {
+        updatedComments = [newComment, ...(c.comments || [])];
+        return { ...c, comments: updatedComments };
+      }
+      return c;
+    }));
+
+    if (selectedCreationForDetail?.id === creationId) {
+      setSelectedCreationForDetail(prev => prev ? {
+        ...prev,
+        comments: updatedComments
+      } : null);
+    }
+
+    try {
+      await setDoc(doc(db, 'creations', creationId), { comments: updatedComments }, { merge: true });
+    } catch (e) {
+      console.warn('Firestore comment sync note (saved locally):', e);
+    }
+  };
+
   const addInspiration = async (item: Omit<Inspiration, 'id' | 'createdAt'>) => {
     const newId = `insp-${Date.now()}`;
     const newInsp: Inspiration = {
@@ -668,6 +752,9 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         adminAuthenticated,
         setAdminAuthenticated,
         isFirebaseConnected,
+        likedCreationIds,
+        toggleLikeCreation,
+        addCreationComment,
         addCreation,
         updateCreation,
         deleteCreation,

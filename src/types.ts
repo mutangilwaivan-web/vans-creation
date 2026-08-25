@@ -1,3 +1,13 @@
+export interface CreationComment {
+  id: string;
+  authorName: string;
+  authorLocation?: string; // e.g. "Kinshasa", "Paris", "Bruxelles"
+  content: string;
+  rating?: number; // 1 to 5
+  createdAt: string;
+  isApproved?: boolean;
+}
+
 export interface Creation {
   id: string;
   title: string;
@@ -21,6 +31,8 @@ export interface Creation {
   customOptions: string[]; // e.g. ["Choix du décolleté", "Longueur de traîne ajustable", "Ajout de manches"]
   isFeatured: boolean;
   misEnAvant?: boolean; // Alias Firestore supporté (misEnAvant: true)
+  likesCount?: number;
+  comments?: CreationComment[];
   createdAt: string;
 }
 

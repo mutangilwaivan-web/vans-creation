@@ -7,10 +7,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Public read access for showroom catalog & settings, authenticated write only
+    // Public read access for showroom catalog & settings
     match /creations/{creationId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow update: if isAuthenticated() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'comments']);
+      allow create, delete: if isAuthenticated();
     }
 
     match /inspirations/{inspirationId} {

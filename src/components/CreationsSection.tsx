@@ -9,7 +9,9 @@ import {
   Scissors, 
   Clock, 
   RotateCcw,
-  Share2
+  Share2,
+  Heart,
+  MessageSquare
 } from 'lucide-react';
 import { generateWhatsAppLink, buildCreationOrderMessage } from '../data/initialData';
 import { ShareModal } from './ShareModal';
@@ -21,7 +23,9 @@ export const CreationsSection: React.FC = () => {
     settings, 
     selectedOccasionFilter, 
     setSelectedOccasionFilter, 
-    setSelectedCreationForDetail 
+    setSelectedCreationForDetail,
+    likedCreationIds,
+    toggleLikeCreation
   } = useStudio();
 
   // Search & Filter state
@@ -212,17 +216,38 @@ export const CreationsSection: React.FC = () => {
                     {/* Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/10 opacity-70 group-hover:opacity-50 transition-opacity duration-300" />
 
-                    {/* Featured / Signature Badge */}
-                    {(creation.isFeatured || creation.misEnAvant) && (
-                      <div className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#181512]/85 backdrop-blur-md text-[#C5A880] text-[9.5px] font-bold tracking-[0.20em] uppercase border border-[#C5A880]/50 shadow-md">
-                        <Sparkles className="w-3 h-3 text-[#C5A880]" />
-                        <span>Signature</span>
-                      </div>
-                    )}
+                    {/* Top Floating Action Badges */}
+                    <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10 pointer-events-none">
+                      {/* Signature or Category Tag */}
+                      {(creation.isFeatured || creation.misEnAvant) ? (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#181512]/85 backdrop-blur-md text-[#C5A880] text-[9px] font-bold tracking-[0.20em] uppercase border border-[#C5A880]/50 shadow-md pointer-events-auto">
+                          <Sparkles className="w-3 h-3 text-[#C5A880]" />
+                          <span>Signature</span>
+                        </div>
+                      ) : (
+                        <div className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[9px] font-bold tracking-wider uppercase shadow-xs pointer-events-auto">
+                          {creation.occasionName || creation.categories[0]}
+                        </div>
+                      )}
 
-                    {/* Occasion / Category Tag */}
-                    <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-white/90 backdrop-blur-md text-[#181512] text-[9.5px] font-bold tracking-wider uppercase shadow-xs">
-                      {creation.occasionName || creation.categories[0]}
+                      {/* Interactive Heart (Like) Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleLikeCreation(creation.id);
+                        }}
+                        className={`pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md transition-all duration-300 cursor-pointer shadow-md active:scale-90 ${
+                          likedCreationIds.includes(creation.id)
+                            ? 'bg-[#6E2333]/90 text-rose-200 border border-rose-400/50'
+                            : 'bg-black/50 hover:bg-black/75 text-white/90 border border-white/20'
+                        }`}
+                        title={likedCreationIds.includes(creation.id) ? 'Retirer des coups de cœur' : 'Ajouter aux coups de cœur'}
+                        aria-label="Aimer cette création"
+                      >
+                        <Heart className={`w-3.5 h-3.5 ${likedCreationIds.includes(creation.id) ? 'fill-rose-400 text-rose-400' : 'text-white'}`} />
+                        <span className="text-[11px] font-bold font-mono">{creation.likesCount || 0}</span>
+                      </button>
                     </div>
 
                     {/* Quick View Button on Hover */}
