@@ -39,6 +39,7 @@ import {
 import { generateWhatsAppLink } from '../data/initialData';
 import { VanessaQuickAddModal } from './VanessaQuickAddModal';
 import { AdminAuthScreen } from './AdminAuthScreen';
+import { auth, signOut } from '../lib/firebase';
 
 type AdminTab = 'creations' | 'inspirations' | 'occasions' | 'testimonials' | 'settings' | 'share-tool' | 'backup';
 
@@ -75,8 +76,6 @@ export const AdminPanel: React.FC = () => {
   } = useStudio();
 
   const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>('creations');
-  const [passwordInput, setPasswordInput] = useState('');
-  const [authError, setAuthError] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Creation Form State
@@ -162,18 +161,15 @@ export const AdminPanel: React.FC = () => {
     setTimeout(() => setSuccessMessage(null), 3500);
   };
 
-  const handleLogin = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (passwordInput === 'atelier2026' || passwordInput === 'admin' || passwordInput === '') {
-      setAdminAuthenticated(true);
-      setAuthError(false);
-      triggerSuccess('Connexion réussie à votre espace de gestion !');
-    } else {
-      setAuthError(true);
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.warn('Firebase sign out note:', e);
     }
-  };
-
-  const handleLogout = () => {
+    localStorage.removeItem('maison_vans_admin_session');
+    localStorage.removeItem('maison_vans_admin_auth');
+    localStorage.removeItem('maison_vans_atelier_data_v1_admin_auth');
     setAdminAuthenticated(false);
     setActiveTab('home');
   };

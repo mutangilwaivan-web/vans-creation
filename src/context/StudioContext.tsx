@@ -167,12 +167,17 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
 
-  // Monitor Firebase Auth state seamlessly
+  // Monitor Firebase Auth state securely
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (user) => {
-      if (user) {
+      if (user && !user.isAnonymous) {
         setAdminAuthenticated(true);
         localStorage.setItem(`${STORAGE_KEY}_admin_auth`, 'true');
+      } else if (!user) {
+        setAdminAuthenticated(false);
+        localStorage.removeItem(`${STORAGE_KEY}_admin_auth`);
+        localStorage.removeItem('maison_vans_admin_auth');
+        localStorage.removeItem('maison_vans_admin_session');
       }
     });
     return () => unsubAuth();

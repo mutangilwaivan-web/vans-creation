@@ -4,6 +4,7 @@ import {
   getAuth, 
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInAnonymously,
   signOut,
   onAuthStateChanged,
@@ -36,6 +37,7 @@ try {
 export { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
+  sendPasswordResetEmail,
   signInAnonymously, 
   signOut, 
   onAuthStateChanged 
