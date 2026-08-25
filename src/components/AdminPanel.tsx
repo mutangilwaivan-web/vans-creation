@@ -39,7 +39,7 @@ import {
 import { generateWhatsAppLink } from '../data/initialData';
 import { VanessaQuickAddModal } from './VanessaQuickAddModal';
 import { AdminAuthScreen } from './AdminAuthScreen';
-import { auth, signOut } from '../lib/firebase';
+import { auth, signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail } from '../lib/firebase';
 
 type AdminTab = 'creations' | 'inspirations' | 'occasions' | 'testimonials' | 'settings' | 'share-tool' | 'backup';
 
@@ -144,10 +144,12 @@ export const AdminPanel: React.FC = () => {
   const [settingsForm, setSettingsForm] = useState(settings);
 
   // Security Management State
+  const [currentAdminPassword, setCurrentAdminPassword] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [confirmAdminPassword, setConfirmAdminPassword] = useState('');
   const [securityMessage, setSecurityMessage] = useState<string | null>(null);
   const [securityError, setSecurityError] = useState<string | null>(null);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   // Fast Share Tool State
   const [selectedShareItemType, setSelectedShareItemType] = useState<'creation' | 'inspiration'>('creation');
@@ -176,19 +178,38 @@ export const AdminPanel: React.FC = () => {
     setActiveTab('home');
   };
 
-  // Helper for image upload (Base64 Data URL)
+  // Helper for image upload (Base64 Data URL) — with security validation
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const MAX_IMAGE_SIZE_MB = 2;
+  const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+
   const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (url: string) => void) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          callback(reader.result);
-          triggerSuccess('Image chargée avec succès !');
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Validate file type
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      triggerSuccess(`❌ Type de fichier non autorisé (${file.type}). Utilisez JPEG, PNG ou WebP.`);
+      e.target.value = '';
+      return;
     }
+
+    // Validate file size
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      triggerSuccess(`❌ Image trop lourde (${sizeMB} MB). Maximum autorisé : ${MAX_IMAGE_SIZE_MB} MB.`);
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        callback(reader.result);
+        triggerSuccess('Image chargée avec succès !');
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   // Creation Submit Handler
@@ -1855,7 +1876,7 @@ export const AdminPanel: React.FC = () => {
                   <span>Sécurité des Accès & Mot de Passe Atelier</span>
                 </h2>
                 <p className="text-xs text-[#6B5F54]">
-                  Personnalisez votre mot de passe d'accès confidentiel ou utilisez l'authentification par code sécurisé à 6 chiffres envoyé sur <strong>{settingsForm.email || settings.email}</strong>.
+                  Changez votre mot de passe d'accès Firebase directement ici, ou recevez un lien de réinitialisation par email sur <strong>{settingsForm.email || settings.email}</strong>.
                 </p>
               </div>
 
@@ -1874,28 +1895,84 @@ export const AdminPanel: React.FC = () => {
               )}
 
               <form 
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
+                  if (!currentAdminPassword || currentAdminPassword.length < 6) {
+                    setSecurityError('Veuillez saisir votre mot de passe actuel.');
+                    return;
+                  }
                   if (newAdminPassword.length < 6) {
-                    setSecurityError('Le mot de passe doit comporter au moins 6 caractères.');
+                    setSecurityError('Le nouveau mot de passe doit comporter au moins 6 caractères.');
                     return;
                   }
                   if (newAdminPassword !== confirmAdminPassword) {
                     setSecurityError('Les deux mots de passe ne correspondent pas.');
                     return;
                   }
-                  localStorage.setItem('maison_vans_custom_admin_password', newAdminPassword);
+                  
+                  setIsUpdatingPassword(true);
                   setSecurityError(null);
-                  setSecurityMessage('Votre nouveau mot de passe Atelier a été enregistré avec succès !');
-                  setNewAdminPassword('');
-                  setConfirmAdminPassword('');
-                  setTimeout(() => setSecurityMessage(null), 4000);
+                  setSecurityMessage(null);
+                  
+                  try {
+                    const user = auth.currentUser;
+                    if (!user || !user.email) {
+                      setSecurityError('Session expirée. Veuillez vous reconnecter.');
+                      setIsUpdatingPassword(false);
+                      return;
+                    }
+                    
+                    // Re-authenticate the user first (Firebase requires this before password change)
+                    const credential = EmailAuthProvider.credential(user.email, currentAdminPassword);
+                    await reauthenticateWithCredential(user, credential);
+                    
+                    // Now update the password in Firebase Auth
+                    await updatePassword(user, newAdminPassword);
+                    
+                    setSecurityMessage('✅ Votre mot de passe Firebase a été mis à jour avec succès ! Utilisez ce nouveau mot de passe lors de votre prochaine connexion.');
+                    setCurrentAdminPassword('');
+                    setNewAdminPassword('');
+                    setConfirmAdminPassword('');
+                    setTimeout(() => setSecurityMessage(null), 6000);
+                  } catch (err: any) {
+                    console.error('[Van\'s Creation] Erreur changement mot de passe:', err);
+                    const code = err?.code || '';
+                    if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+                      setSecurityError('Le mot de passe actuel saisi est incorrect.');
+                    } else if (code === 'auth/weak-password') {
+                      setSecurityError('Le nouveau mot de passe est trop faible. Utilisez au moins 6 caractères.');
+                    } else if (code === 'auth/requires-recent-login') {
+                      setSecurityError('Votre session est trop ancienne. Déconnectez-vous et reconnectez-vous avant de changer le mot de passe.');
+                    } else if (code === 'auth/too-many-requests') {
+                      setSecurityError('Trop de tentatives. Veuillez patienter quelques minutes.');
+                    } else {
+                      setSecurityError(`Erreur : ${err?.message || 'Vérifiez votre connexion internet.'}`);
+                    }
+                  } finally {
+                    setIsUpdatingPassword(false);
+                  }
                 }}
                 className="space-y-4 max-w-lg"
               >
                 <div>
                   <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                    Nouveau Mot de Passe Atelier
+                    Mot de Passe Actuel
+                  </label>
+                  <input
+                    type="password"
+                    value={currentAdminPassword}
+                    onChange={(e) => {
+                      setCurrentAdminPassword(e.target.value);
+                      setSecurityError(null);
+                    }}
+                    placeholder="Votre mot de passe actuel"
+                    className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2 text-xs text-[#1E1B18]"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+                    Nouveau Mot de Passe
                   </label>
                   <input
                     type="password"
@@ -1920,17 +1997,43 @@ export const AdminPanel: React.FC = () => {
                       setConfirmAdminPassword(e.target.value);
                       setSecurityError(null);
                     }}
-                    placeholder="Retapez votre mot de passe"
+                    placeholder="Retapez votre nouveau mot de passe"
                     className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2 text-xs text-[#1E1B18]"
                   />
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-2 flex flex-wrap gap-3">
                   <button
                     type="submit"
-                    className="px-6 py-2.5 bg-[#181512] hover:bg-[#2C2723] text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm cursor-pointer"
+                    disabled={isUpdatingPassword}
+                    className="px-6 py-2.5 bg-[#181512] hover:bg-[#2C2723] text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm cursor-pointer disabled:opacity-50"
                   >
-                    Mettre à jour le mot de passe
+                    {isUpdatingPassword ? 'Mise à jour...' : 'Mettre à jour le mot de passe'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const user = auth.currentUser;
+                      const email = user?.email || settings.email;
+                      if (!email) {
+                        setSecurityError('Aucune adresse email trouvée.');
+                        return;
+                      }
+                      try {
+                        const actionCodeSettings = {
+                          url: window.location.origin + '/#admin',
+                          handleCodeInApp: false,
+                        };
+                        await sendPasswordResetEmail(auth, email, actionCodeSettings);
+                        setSecurityMessage(`📧 Un lien de réinitialisation a été envoyé à ${email}. Vérifiez vos emails (y compris spam).`);
+                        setTimeout(() => setSecurityMessage(null), 8000);
+                      } catch (err: any) {
+                        setSecurityError(`Erreur d'envoi : ${err?.message || 'Réessayez.'}`);
+                      }
+                    }}
+                    className="px-5 py-2.5 bg-[#FAF8F5] hover:bg-[#F0EAE1] text-[#5C5247] border border-[#E0D7CC] rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer"
+                  >
+                    Recevoir un lien par email
                   </button>
                 </div>
               </form>

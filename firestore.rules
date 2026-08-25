@@ -2,43 +2,56 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check if user is authenticated admin
-    function isAuthenticated() {
-      return request.auth != null;
+    // Only the site owner (admin) can write to protected collections
+    function isAdmin() {
+      return request.auth != null 
+        && request.auth.token.email == 'mutangilwaivan@gmail.com';
     }
 
     // Public read access for showroom catalog & settings
     match /creations/{creationId} {
       allow read: if true;
-      allow update: if isAuthenticated() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'comments']);
-      allow create, delete: if isAuthenticated();
+      // Likes: anyone authenticated can update only likesCount (limited field)
+      // Comments: anyone can add comments but only to the comments array
+      allow update: if isAdmin() 
+        || (request.auth != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount']))
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments']);
+      allow create, delete: if isAdmin();
     }
 
     match /inspirations/{inspirationId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     match /occasions/{occasionId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     match /testimonials/{testimonialId} {
       allow read: if true;
-      allow create: if true; // Allows clients to submit testimonials
-      allow update, delete: if isAuthenticated();
+      // Public can create testimonials but with size limits
+      allow create: if request.resource.data.keys().hasAll(['clientName', 'feedback', 'rating'])
+        && request.resource.data.clientName is string
+        && request.resource.data.clientName.size() <= 100
+        && request.resource.data.feedback is string
+        && request.resource.data.feedback.size() <= 1000
+        && request.resource.data.rating is number
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5;
+      allow update, delete: if isAdmin();
     }
 
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // Catch-all default: read allowed, write protected
+    // Catch-all: deny all writes except for admin
     match /{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
   }
 }

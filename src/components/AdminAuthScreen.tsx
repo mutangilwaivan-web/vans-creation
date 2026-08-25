@@ -153,14 +153,35 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
     setAuthError(null);
     setResetSuccessMessage(null);
 
+    const cleanEmail = emailInput.trim().toLowerCase();
+
     try {
-      await sendPasswordResetEmail(auth, emailInput.trim().toLowerCase());
-      setResetSuccessMessage(`Un email de réinitialisation sécurisé a été envoyé à ${emailInput}. Vérifiez votre boîte de réception.`);
+      // ActionCodeSettings tells Firebase where to redirect the user after resetting
+      const actionCodeSettings = {
+        url: window.location.origin + '/#admin',
+        handleCodeInApp: false,
+      };
+      await sendPasswordResetEmail(auth, cleanEmail, actionCodeSettings);
+      setResetSuccessMessage(
+        `✅ Un email de réinitialisation a été envoyé à ${cleanEmail}. ` +
+        `Vérifiez votre boîte de réception ET vos courriers indésirables (spam/junk). ` +
+        `L'email provient de noreply@gen-lang-client-0203190859.firebaseapp.com.`
+      );
       setShowResetForm(false);
     } catch (err: any) {
-      // Generic security message to prevent email enumeration
-      setResetSuccessMessage(`Si cette adresse est enregistrée, un lien de réinitialisation vous a été envoyé.`);
-      setShowResetForm(false);
+      console.error('[Van\'s Creation] Erreur réinitialisation mot de passe:', err);
+      const code = err?.code || '';
+      if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
+        setAuthError('Aucun compte n\'est associé à cette adresse email. Vérifiez l\'adresse saisie.');
+      } else if (code === 'auth/invalid-email') {
+        setAuthError('L\'adresse email saisie n\'est pas valide.');
+      } else if (code === 'auth/too-many-requests') {
+        setAuthError('Trop de tentatives de réinitialisation. Veuillez patienter quelques minutes avant de réessayer.');
+      } else if (code === 'auth/network-request-failed') {
+        setAuthError('Erreur de connexion internet. Vérifiez votre connexion et réessayez.');
+      } else {
+        setAuthError(`Erreur lors de l'envoi : ${err?.message || 'Vérifiez votre connexion internet et réessayez.'}`);
+      }
     } finally {
       setIsResettingPassword(false);
     }
@@ -331,12 +352,19 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                   type="email"
                   required
                   value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
+                  onChange={(e) => { setEmailInput(e.target.value); setAuthError(null); }}
                   placeholder="adresse@exemple.com"
                   className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-3 pl-10 text-sm text-[#181512] placeholder-[#A39688] focus:outline-none focus:border-[#1B4332] transition-all"
                 />
                 <Mail className="w-4 h-4 text-[#8C7A6B] absolute left-3.5 top-3.5 pointer-events-none" />
               </div>
+
+              {authError && (
+                <div className="flex items-start gap-1.5 text-xs text-rose-600 mt-2 p-2.5 bg-rose-50 border border-rose-200 rounded-xl">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>{authError}</span>
+                </div>
+              )}
             </div>
 
             <button

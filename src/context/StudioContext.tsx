@@ -171,9 +171,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [selectedOccasionFilter, setSelectedOccasionFilter] = useState<string | null>(null);
   const [selectedCreationForDetail, setSelectedCreationForDetail] = useState<Creation | null>(null);
   const [selectedInspirationForDetail, setSelectedInspirationForDetail] = useState<Inspiration | null>(null);
-  const [adminAuthenticated, setAdminAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem(`${STORAGE_KEY}_admin_auth`) === 'true';
-  });
+  const [adminAuthenticated, setAdminAuthenticated] = useState<boolean>(false);
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
   const [likedCreationIds, setLikedCreationIds] = useState<string[]>(() => {
     try {
@@ -184,13 +182,15 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   });
 
-  // Monitor Firebase Auth state securely
+  // Monitor Firebase Auth state securely — this is the ONLY source of truth for admin access
+  const ADMIN_EMAIL = 'mutangilwaivan@gmail.com';
+
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (user) => {
-      if (user && !user.isAnonymous) {
+      if (user && !user.isAnonymous && user.email?.toLowerCase() === ADMIN_EMAIL) {
         setAdminAuthenticated(true);
         localStorage.setItem(`${STORAGE_KEY}_admin_auth`, 'true');
-      } else if (!user) {
+      } else {
         setAdminAuthenticated(false);
         localStorage.removeItem(`${STORAGE_KEY}_admin_auth`);
         localStorage.removeItem('maison_vans_admin_auth');
@@ -449,7 +449,16 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  // Client-side rate limiter for likes
+  const [lastLikeTimestamp, setLastLikeTimestamp] = useState<number>(0);
+  const LIKE_COOLDOWN_MS = 2000; // 2 seconds between likes
+
   const toggleLikeCreation = async (creationId: string) => {
+    const now = Date.now();
+    if (now - lastLikeTimestamp < LIKE_COOLDOWN_MS) {
+      return; // Rate limited — ignore rapid clicks
+    }
+    setLastLikeTimestamp(now);
     const isLiked = likedCreationIds.includes(creationId);
     const nextLikedIds = isLiked
       ? likedCreationIds.filter(id => id !== creationId)
@@ -483,15 +492,38 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  // Sanitize text to prevent XSS injection
+  const sanitizeText = (text: string): string => {
+    return text
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+      .replace(/\//g, '&#x2F;')
+      .replace(/javascript:/gi, '')
+      .replace(/on\w+\s*=/gi, '')
+      .trim();
+  };
+
   const addCreationComment = async (creationId: string, commentData: Omit<CreationComment, 'id' | 'createdAt'>) => {
+    // Sanitize and validate inputs
+    const cleanName = sanitizeText(commentData.authorName || '').substring(0, 50) || 'Visiteuse de l\'Atelier';
+    const cleanLocation = sanitizeText(commentData.authorLocation || '').substring(0, 50) || 'Kinshasa';
+    const cleanContent = sanitizeText(commentData.content || '').substring(0, 500);
+
+    if (!cleanContent || cleanContent.length < 3) {
+      console.warn('Comment rejected: content too short or empty after sanitization.');
+      return;
+    }
+
     const newComment: CreationComment = {
       id: `comm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      authorName: commentData.authorName.trim() || 'Visiteuse de l’Atelier',
-      authorLocation: commentData.authorLocation?.trim() || 'Kinshasa',
-      content: commentData.content.trim(),
-      rating: commentData.rating || 5,
+      authorName: cleanName,
+      authorLocation: cleanLocation,
+      content: cleanContent,
+      rating: Math.min(5, Math.max(1, Math.round(commentData.rating || 5))),
       createdAt: new Date().toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }),
-      isApproved: true,
+      isApproved: false, // Requires admin approval before display
     };
 
     let updatedComments: CreationComment[] = [];
