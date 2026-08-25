@@ -780,12 +780,13 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
 
       </div>
 
-      {/* Rich Viral Share Modal */}
+      {/* Rich Viral Share Modal with Multi-Angle Selector */}
       {isShareModalOpen && (
         <ShareModal
           item={creation}
           type="creation"
           isOpen={isShareModalOpen}
+          initialImageIndex={currentImageIndex}
           onClose={() => setIsShareModalOpen(false)}
         />
       )}

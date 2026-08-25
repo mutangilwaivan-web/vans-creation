@@ -91,13 +91,15 @@ export const AdminPanel: React.FC = () => {
     colors: 'Noir, Doré',
     fabrics: 'Soie Sauvage, Dentelle',
     silhouette: 'Sculpturale & Évasée',
-    images: ['https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=85'],
+    coutureLine: 'Ligne Gala & Tapis Rouge',
+    fittingDetails: '2 séances privées d’essayage à l’Atelier de Kinshasa ou visioconférence guidée pour la Diaspora',
+    images: ['https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=750&q=75'],
     videoUrl: '',
-    priceEstimate: 'Sur devis (Dès 750€)',
+    priceEstimate: 'Sur devis (Dès 750$)',
     preparationTime: '3 à 5 semaines',
     isAvailable: true,
     availabilityBadge: 'Sur commande' as 'Sur commande' | 'Pièce unique disponible' | 'En confection',
-    customOptions: 'Ajustement de la traîne, Choix des manches',
+    customOptions: 'Ajustement de la traîne, Choix des manches, Corset intérieur sur-mesure',
     isFeatured: false,
   });
 
@@ -205,6 +207,8 @@ export const AdminPanel: React.FC = () => {
       colors: creationForm.colors.split(',').map(s => s.trim()).filter(Boolean),
       fabrics: creationForm.fabrics.split(',').map(s => s.trim()).filter(Boolean),
       silhouette: creationForm.silhouette,
+      coutureLine: creationForm.coutureLine,
+      fittingDetails: creationForm.fittingDetails,
       images: creationForm.images.filter(Boolean),
       videoUrl: creationForm.videoUrl.trim() || undefined,
       priceEstimate: creationForm.priceEstimate,
@@ -236,13 +240,15 @@ export const AdminPanel: React.FC = () => {
       colors: 'Noir, Doré',
       fabrics: 'Soie Sauvage, Dentelle',
       silhouette: 'Sculpturale & Évasée',
-      images: ['https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=85'],
+      coutureLine: 'Ligne Gala & Tapis Rouge',
+      fittingDetails: '2 séances privées d’essayage à l’Atelier de Kinshasa ou visioconférence guidée pour la Diaspora',
+      images: ['https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=750&q=75'],
       videoUrl: '',
-      priceEstimate: 'Sur devis (Dès 750€)',
+      priceEstimate: 'Sur devis (Dès 750$)',
       preparationTime: '3 à 5 semaines',
       isAvailable: true,
       availabilityBadge: 'Sur commande',
-      customOptions: 'Ajustement de la traîne, Choix des manches',
+      customOptions: 'Ajustement de la traîne, Choix des manches, Corset intérieur sur-mesure',
       isFeatured: false,
     });
   };
@@ -253,20 +259,22 @@ export const AdminPanel: React.FC = () => {
       title: creation.title,
       subtitle: creation.subtitle || '',
       description: creation.description,
-      longDescription: creation.longDescription,
+      longDescription: creation.longDescription || creation.description,
       occasionName: creation.occasionName,
       categories: creation.categories.join(', '),
       colors: creation.colors.join(', '),
       fabrics: creation.fabrics.join(', '),
       silhouette: creation.silhouette,
-      images: creation.images,
+      coutureLine: creation.coutureLine || 'Ligne Gala & Tapis Rouge',
+      fittingDetails: creation.fittingDetails || '2 séances privées d’essayage à l’Atelier de Kinshasa ou visioconférence guidée pour la Diaspora',
+      images: creation.images.length > 0 ? creation.images : [''],
       videoUrl: creation.videoUrl || '',
       priceEstimate: creation.priceEstimate || '',
       preparationTime: creation.preparationTime || '',
       isAvailable: creation.isAvailable,
       availabilityBadge: creation.availabilityBadge,
       customOptions: creation.customOptions?.join(', ') || '',
-      isFeatured: creation.isFeatured,
+      isFeatured: creation.isFeatured || false,
     });
     window.scrollTo({ top: 300, behavior: 'smooth' });
   };
@@ -752,6 +760,34 @@ export const AdminPanel: React.FC = () => {
                       value={creationForm.preparationTime}
                       onChange={(e) => setCreationForm({ ...creationForm, preparationTime: e.target.value })}
                       placeholder="Ex: 4 à 6 semaines"
+                      className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-3.5 py-2 text-xs text-[#1E1B18] focus:border-[#C5A880] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+                      Ligne & Prestige Haute Couture
+                    </label>
+                    <input
+                      type="text"
+                      value={creationForm.coutureLine}
+                      onChange={(e) => setCreationForm({ ...creationForm, coutureLine: e.target.value })}
+                      placeholder="Ex: Ligne Gala & Tapis Rouge / Ligne Mariée Royale"
+                      className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-3.5 py-2 text-xs text-[#1E1B18] focus:border-[#C5A880] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+                      Protocole d'Essayages & Accompagnement
+                    </label>
+                    <input
+                      type="text"
+                      value={creationForm.fittingDetails}
+                      onChange={(e) => setCreationForm({ ...creationForm, fittingDetails: e.target.value })}
+                      placeholder="Ex: 2 séances privées d’essayage à l’Atelier de Kinshasa ou visio"
                       className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-3.5 py-2 text-xs text-[#1E1B18] focus:border-[#C5A880] focus:outline-none"
                     />
                   </div>

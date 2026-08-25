@@ -16,7 +16,8 @@ import {
   Play,
   ExternalLink,
   Link2,
-  Video
+  Video,
+  Eye
 } from 'lucide-react';
 import { Creation, Inspiration } from '../types';
 import { useStudio } from '../context/StudioContext';
@@ -27,16 +28,21 @@ interface ShareModalProps {
   type?: 'creation' | 'inspiration';
   isOpen: boolean;
   onClose: () => void;
+  initialImageIndex?: number;
 }
+
+const SHARE_ANGLE_LABELS = ['Vue de Face', 'Vue de Profil', 'Vue de Dos', 'Détail Étoffe'];
 
 export const ShareModal: React.FC<ShareModalProps> = ({
   item,
   type = 'creation',
   isOpen,
   onClose,
+  initialImageIndex = 0,
 }) => {
   const { settings } = useStudio();
   const [activeShareTab, setActiveShareTab] = useState<'status' | 'direct' | 'social'>('status');
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(initialImageIndex);
   const [mediaMode, setMediaMode] = useState<'photo' | 'video'>(item.videoUrl ? 'video' : 'photo');
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCaption, setCopiedCaption] = useState(false);
@@ -61,27 +67,22 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   
   const shareUrl = `${origin}${pathname}${shareParam}`;
 
-  // Image for previews & Pinterest
-  const previewImage = isCreation && creation
-    ? (creation.images && creation.images[0]) || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1400&q=85'
-    : (inspiration?.imageUrl || 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=1400&q=85');
+  const angleLabel = SHARE_ANGLE_LABELS[selectedImageIndex] || `Vue ${selectedImageIndex + 1}`;
+
+  // Image for previews & Pinterest (adapts to chosen angle)
+  const previewImage = isCreation && creation && creation.images && creation.images.length > 0
+    ? (creation.images[selectedImageIndex] || creation.images[0])
+    : (inspiration?.imageUrl || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=750&q=75');
 
   const videoUrl = item.videoUrl || null;
 
-  // Text message builders
-  const whatsappShareText = isCreation && creation
-    ? buildCreationShareMessage(creation, settings.studioName, shareUrl, settings.whatsappNumber)
-    : inspiration
-    ? buildInspirationShareMessage(inspiration, settings.studioName, shareUrl)
-    : `Découvrez cette création sur l'Atelier Digital Van's Creation : ${shareUrl}`;
-
   // Dedicated Short WhatsApp Status caption with direct link to product sheet
   const statusCaption = isCreation && creation
-    ? `${creation.title.toUpperCase()}${videoUrl && mediaMode === 'video' ? ' (Vidéo du Défilé)' : ''}
+    ? `${creation.title.toUpperCase()} • ${angleLabel.toUpperCase()}${videoUrl && mediaMode === 'video' ? ' (Vidéo du Défilé)' : ''}
 Confection sur-mesure Maison Van's (${creation.silhouette})
 Étoffes : ${creation.fabrics?.slice(0, 3).join(', ') || 'Soie & Dentelle d\'exception'}
 
-Fiche produit interactive, photographies et détails :
+Fiche produit interactive, photographies sous toutes les vues :
 ${shareUrl}
 
 Consultation et commande atelier : ${settings.whatsappNumber}`
@@ -94,7 +95,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
 
   // Social caption for Instagram / TikTok
   const instagramCaption = isCreation && creation
-    ? `${creation.title.toUpperCase()}\nConfection sur-mesure et modélisme architectural par ${settings.designerName} (${settings.studioName} - Kinshasa).\n\nSilhouette : ${creation.silhouette}\nÉtoffes : ${creation.fabrics?.join(', ') || 'Matières nobles'}\n${videoUrl ? 'Vidéo du défilé disponible sur la fiche officielle.\n' : ''}\nDécouvrez la fiche détaillée à 360° et le catalogue complet : ${shareUrl}\n\n#VansCreation #VanessaKaniki #HauteCoutureKinshasa #SurMesure #RobeDeMariéeKinshasa #ModeCongolaise #KinshasaFashion`
+    ? `${creation.title.toUpperCase()} • ${angleLabel.toUpperCase()}\nConfection sur-mesure et modélisme architectural par ${settings.designerName} (${settings.studioName} - Kinshasa).\n\nSilhouette : ${creation.silhouette}\nÉtoffes : ${creation.fabrics?.join(', ') || 'Matières nobles'}\n${videoUrl ? 'Vidéo du défilé disponible sur la fiche officielle.\n' : ''}\nDécouvrez la fiche détaillée à 360° et le catalogue complet : ${shareUrl}\n\n#VansCreation #VanessaKaniki #HauteCoutureKinshasa #SurMesure #RobeDeMariéeKinshasa #ModeCongolaise #KinshasaFashion`
     : `${inspiration?.title.toUpperCase()}\nInspiration et création d'art par ${settings.studioName} (${inspiration?.category}).\n\nExplorez l'Atelier Digital : ${shareUrl}\n\n#VansCreation #KinshasaFashion #HauteCouture #SurMesure`;
 
   // WhatsApp Share URL (Opens WhatsApp with preloaded text containing direct link)
@@ -104,10 +105,10 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
   const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
 
   // Pinterest Pin URL
-  const pinterestShareUrl = `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(shareUrl)}&media=${encodeURIComponent(previewImage)}&description=${encodeURIComponent(isCreation && creation ? `${creation.title} — Haute Couture Sur-Mesure Maison Van's Kinshasa` : 'Inspiration Maison Van\'s')}`;
+  const pinterestShareUrl = `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(shareUrl)}&media=${encodeURIComponent(previewImage)}&description=${encodeURIComponent(isCreation && creation ? `${creation.title} (${angleLabel}) — Haute Couture Sur-Mesure Maison Van's Kinshasa` : 'Inspiration Maison Van\'s')}`;
 
   // Twitter / X Share URL
-  const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(isCreation && creation ? `Découvrez « ${creation.title} » — Création Sur-Mesure par Maison Van's Kinshasa.` : 'Inspiration Couture — Maison Van\'s Kinshasa')}&url=${encodeURIComponent(shareUrl)}&hashtags=HauteCouture,SurMesure,Kinshasa,VansCreation`;
+  const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(isCreation && creation ? `Découvrez « ${creation.title} » (${angleLabel}) — Création Sur-Mesure par Maison Van's Kinshasa.` : 'Inspiration Couture — Maison Van\'s Kinshasa')}&url=${encodeURIComponent(shareUrl)}&hashtags=HauteCouture,SurMesure,Kinshasa,VansCreation`;
 
   // Download High-Resolution Image for WhatsApp Status / Story
   const handleDownloadImage = async () => {
@@ -118,7 +119,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
-      const fileName = `Vans-Creation-${item.title.replace(/[^a-zA-Z0-9]/g, '_')}.jpg`;
+      const fileName = `Vans-Creation-${item.title.replace(/[^a-zA-Z0-9]/g, '_')}-${angleLabel.replace(/[^a-zA-Z0-9]/g, '_')}.jpg`;
       link.download = fileName;
       document.body.appendChild(link);
       link.click();
@@ -225,7 +226,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
   const getMediaFile = async (url: string, isVideo: boolean): Promise<File | null> => {
     const ext = isVideo ? 'mp4' : 'jpg';
     const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
-    const fileName = `Vans-Creation-${item.title.replace(/[^a-zA-Z0-9]/g, '_')}.${ext}`;
+    const fileName = `Vans-Creation-${item.title.replace(/[^a-zA-Z0-9]/g, '_')}-${angleLabel.replace(/[^a-zA-Z0-9]/g, '_')}.${ext}`;
 
     try {
       const res = await fetch(url, { mode: 'cors' });
@@ -281,7 +282,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
       
       if (navigator.share && file && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
-          title: isCreation && creation ? `${creation.title} — ${settings.studioName}` : settings.studioName,
+          title: isCreation && creation ? `${creation.title} (${angleLabel}) — ${settings.studioName}` : settings.studioName,
           text: statusCaption,
           files: [file],
         });
@@ -289,7 +290,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
       } else if (navigator.share) {
         // Fallback: share text & URL via Web Share
         await navigator.share({
-          title: isCreation && creation ? `${creation.title} — ${settings.studioName}` : settings.studioName,
+          title: isCreation && creation ? `${creation.title} (${angleLabel}) — ${settings.studioName}` : settings.studioName,
           text: statusCaption,
           url: shareUrl,
         });
@@ -304,7 +305,6 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
       }
     } catch (e) {
       console.warn('Native share cancelled or failed', e);
-      // If native share fails or user cancels, make sure text is copied and open whatsapp link
       window.open(whatsappShareUrl, '_blank');
     } finally {
       setIsDownloading(false);
@@ -319,7 +319,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
     >
       <div 
         id="social-share-modal-container"
-        className="bg-[#FAF8F5] text-[#181512] w-full max-h-[94vh] sm:max-h-[90vh] sm:max-w-xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[#EAE3DA] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200"
+        className="bg-[#FAF8F5] text-[#181512] w-full max-h-[94vh] sm:max-h-[90vh] sm:max-w-xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[#EAE3DA] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200 font-sans"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -329,10 +329,10 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
               <Share2 className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-cinzel text-sm sm:text-base font-bold text-[#FAF8F5] tracking-wide">
+              <h3 className="font-cinzel text-sm sm:text-base font-bold text-[#FAF8F5] tracking-wide" style={{ fontFamily: "'Cinzel', serif" }}>
                 Partager en Statut & Réseaux
               </h3>
-              <p className="text-[10px] sm:text-[11px] text-[#C5A880] tracking-wider uppercase">
+              <p className="text-[10px] sm:text-[11px] text-[#C5A880] tracking-wider uppercase font-semibold">
                 Maison Van's • Kinshasa
               </p>
             </div>
@@ -391,6 +391,57 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
         {/* Modal Body */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4">
           
+          {/* ========================================================================= */}
+          {/* CHOOSE WHICH ANGLE / VIEW TO SHARE (When multiple images available)       */}
+          {/* ========================================================================= */}
+          {isCreation && creation && creation.images && creation.images.length > 1 && (
+            <div className="p-3 bg-[#EAE3DA]/70 rounded-2xl border border-[#D5CABE] space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#6A5E52] px-1">
+                <span className="flex items-center gap-1.5 text-[#181512]">
+                  <Eye className="w-3.5 h-3.5 text-[#C5A880]" />
+                  <span>Vue choisie pour le partage :</span>
+                </span>
+                <span className="text-[#1B4332] font-mono font-bold">
+                  {angleLabel} ({selectedImageIndex + 1}/{creation.images.length})
+                </span>
+              </div>
+
+              <div className="grid grid-cols-4 gap-2">
+                {creation.images.map((img, idx) => {
+                  const isCurrent = selectedImageIndex === idx;
+                  const label = SHARE_ANGLE_LABELS[idx] || `Vue ${idx + 1}`;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setSelectedImageIndex(idx);
+                        setMediaMode('photo');
+                      }}
+                      className={`flex flex-col items-center p-1 rounded-xl border transition-all cursor-pointer ${
+                        isCurrent
+                          ? 'bg-white border-[#C5A880] shadow-md ring-2 ring-[#C5A880]/40 scale-[1.03]'
+                          : 'bg-[#FAF8F5] border-[#D5CABE] opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="w-full aspect-[3/4] rounded-lg overflow-hidden mb-1 bg-black relative">
+                        <img src={img} alt={label} className="w-full h-full object-cover object-top" />
+                        {isCurrent && (
+                          <div className="absolute inset-0 border-2 border-[#C5A880] rounded-lg pointer-events-none" />
+                        )}
+                      </div>
+                      <span className={`text-[9.5px] font-bold truncate w-full text-center ${
+                        isCurrent ? 'text-[#181512]' : 'text-[#6A5E52]'
+                      }`}>
+                        {label.replace('Vue de ', '')}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: Statut WhatsApp & Story Instagram (Photo / Vidéo + Lien fiche produit) */}
           {activeShareTab === 'status' && (
             <div className="space-y-4 animate-in fade-in duration-200">
@@ -413,7 +464,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                       }`}
                     >
                       <ImageIcon className="w-3.5 h-3.5" />
-                      <span>Photo HD</span>
+                      <span>{angleLabel}</span>
                     </button>
                     <button
                       type="button"
@@ -434,10 +485,10 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
               {/* Visual Preview of the WhatsApp Status / Story */}
               <div className="bg-[#181512] text-white p-3.5 rounded-2xl border border-[#3D352E] shadow-md relative overflow-hidden">
                 <div className="text-[10px] uppercase font-bold text-[#C5A880] tracking-wider mb-2 flex items-center justify-between">
-                  <span>Aperçu de votre Statut / Story</span>
+                  <span>Aperçu : {angleLabel}</span>
                   <span className="bg-[#25D366]/20 text-[#25D366] px-2 py-0.5 rounded-full text-[9px] font-semibold flex items-center gap-1">
                     <Check className="w-2.5 h-2.5" />
-                    <span>Lien vers fiche produit inclus</span>
+                    <span>Lien vers fiche inclus</span>
                   </span>
                 </div>
                 
@@ -456,7 +507,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                       <img 
                         src={previewImage} 
                         alt={item.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover object-top"
                         referrerPolicy="no-referrer"
                       />
                     )}
@@ -468,18 +519,18 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                         </span>
                       ) : (
                         <span className="bg-black/70 text-[#C5A880] text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">
-                          Photo HD
+                          {angleLabel}
                         </span>
                       )}
                     </div>
                   </div>
 
                   <div className="flex-1 min-w-0 space-y-1.5 text-xs text-[#E5D5C3]">
-                    <h4 className="font-cinzel text-sm sm:text-base font-bold text-[#FAF8F5] line-clamp-1">
+                    <h4 className="font-cinzel text-sm sm:text-base font-bold text-[#FAF8F5] line-clamp-1" style={{ fontFamily: "'Cinzel', serif" }}>
                       {item.title}
                     </h4>
                     <p className="text-[11px] text-[#D8CFC4] line-clamp-2">
-                      {isCreation && creation ? `Silhouette ${creation.silhouette} • 100% Sur-Mesure` : (inspiration?.description || '')}
+                      {isCreation && creation ? `Silhouette ${creation.silhouette} • ${angleLabel}` : (inspiration?.description || '')}
                     </p>
                     <div className="bg-white/10 p-2 rounded-xl text-[10px] text-[#C5A880] font-mono flex items-center justify-between gap-1 border border-white/10">
                       <span className="truncate">{shareUrl}</span>
@@ -489,7 +540,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                 </div>
               </div>
 
-              {/* DEDICATED PRODUCT SHEET LINK BOX (Direct Traffic Driver) */}
+              {/* DEDICATED PRODUCT SHEET LINK BOX */}
               <div className="p-3.5 bg-gradient-to-r from-[#FAF6F0] to-[#F2EDE4] rounded-2xl border-2 border-[#C5A880]/60 shadow-xs space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] sm:text-xs font-bold text-[#181512] uppercase tracking-wider flex items-center gap-1.5">
@@ -543,12 +594,12 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                   <Smartphone className="w-4 h-4 fill-current shrink-0 group-hover:scale-110 transition-transform" />
                   <span>
                     {isDownloading 
-                      ? 'Préparation de la photo et du lien...' 
-                      : 'Ouvrir dans WhatsApp & Statut (Photo et Lien)'}
+                      ? 'Préparation de la vue et du lien...' 
+                      : `Partager ${angleLabel} sur WhatsApp & Statut`}
                   </span>
                 </button>
 
-                {/* 2. Téléchargement direct Photo HD ou Vidéo */}
+                {/* 2. Téléchargement direct Photo HD de la vue ou Vidéo */}
                 {mediaMode === 'video' && videoUrl ? (
                   <button
                     type="button"
@@ -573,8 +624,8 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                     <Download className="w-3.5 h-3.5 text-[#C5A880] group-hover:translate-y-0.5 transition-transform" />
                     <span>
                       {downloadSuccess 
-                        ? 'Photo HD téléchargée et texte avec lien copié' 
-                        : 'Télécharger la Photo HD (Légende copiée)'}
+                        ? `Photo (${angleLabel}) téléchargée et texte copié` 
+                        : `Télécharger la Photo HD (${angleLabel})`}
                     </span>
                   </button>
                 )}
@@ -588,7 +639,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                   {copiedStatusText ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-emerald-700 font-bold">Légende & Lien de la fiche copiés !</span>
+                      <span className="text-emerald-700 font-bold">Légende ({angleLabel}) copiée !</span>
                     </>
                   ) : (
                     <>
@@ -606,9 +657,9 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                   <span>Comment publier sur Statut & Stories en 3 clics ?</span>
                 </div>
                 <ol className="list-decimal list-inside space-y-1 text-[11px] pl-1">
-                  <li>Cliquez sur <strong>« Télécharger la {mediaMode === 'video' && videoUrl ? 'Vidéo' : 'Photo'} »</strong> ci-dessus (le texte et le lien se copient automatiquement).</li>
-                  <li>Ouvrez <strong>WhatsApp &gt; Mon Statut</strong> (ou Instagram Story) et choisissez le fichier téléchargé.</li>
-                  <li>Collez la légende copiée : vos contacts cliqueront directement sur le lien pour découvrir la robe et vous contacter !</li>
+                  <li>Choisissez la vue voulue (*Face*, *Profil*, *Dos*, *Détail*) puis cliquez sur <strong>« Télécharger la Photo »</strong>.</li>
+                  <li>Ouvrez <strong>WhatsApp &gt; Mon Statut</strong> et importez la photo.</li>
+                  <li>Collez la légende copiée contenant le lien direct vers votre atelier !</li>
                 </ol>
               </div>
 
@@ -633,7 +684,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                     <img 
                       src={previewImage} 
                       alt={item.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover object-top"
                       referrerPolicy="no-referrer"
                     />
                   )}
@@ -647,7 +698,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[#9E7D53] block truncate">
-                      {isCreation && creation ? creation.occasionName : (inspiration?.category || 'Couture')}
+                      {isCreation && creation ? `${creation.occasionName} • ${angleLabel}` : (inspiration?.category || 'Couture')}
                     </span>
                     {videoUrl && (
                       <span className="bg-[#6E2333] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase">
@@ -655,12 +706,12 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                       </span>
                     )}
                   </div>
-                  <h4 className="font-cinzel text-xs sm:text-sm font-bold text-[#181512] line-clamp-1">
+                  <h4 className="font-cinzel text-xs sm:text-sm font-bold text-[#181512] line-clamp-1" style={{ fontFamily: "'Cinzel', serif" }}>
                     {item.title}
                   </h4>
                   {isCreation && creation && (
                     <p className="text-[11px] text-[#5C5247] line-clamp-1">
-                      Silhouette {creation.silhouette} • 100% Sur-Mesure
+                      Silhouette {creation.silhouette} • {angleLabel}
                     </p>
                   )}
                   <div className="inline-flex items-center gap-1 text-[10px] text-[#25D366] font-semibold">
@@ -737,7 +788,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                   href={facebookShareUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex flex-col items-center justify-center p-3 rounded-xl bg-white hover:bg-[#F3EFE9] border border-[#E0D8CE] text-[#181512] transition-colors text-center group"
+                  className="flex flex-col items-center justify-center p-3 rounded-xl bg-white hover:bg-[#F3EFE9] border border-[#E0D8CE] text-[#181512] transition-colors text-center group cursor-pointer"
                   title="Partager sur Facebook"
                 >
                   <div className="w-7 h-7 rounded-full bg-[#1877F2] text-white flex items-center justify-center mb-1 text-xs font-bold shadow-sm group-hover:scale-105 transition-transform">
@@ -751,7 +802,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                   href={pinterestShareUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex flex-col items-center justify-center p-3 rounded-xl bg-white hover:bg-[#F3EFE9] border border-[#E0D8CE] text-[#181512] transition-colors text-center group"
+                  className="flex flex-col items-center justify-center p-3 rounded-xl bg-white hover:bg-[#F3EFE9] border border-[#E0D8CE] text-[#181512] transition-colors text-center group cursor-pointer"
                   title="Épingler sur Pinterest"
                 >
                   <div className="w-7 h-7 rounded-full bg-[#E60023] text-white flex items-center justify-center mb-1 text-xs font-bold shadow-sm group-hover:scale-105 transition-transform">
@@ -765,7 +816,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                   href={twitterShareUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex flex-col items-center justify-center p-3 rounded-xl bg-white hover:bg-[#F3EFE9] border border-[#E0D8CE] text-[#181512] transition-colors text-center group"
+                  className="flex flex-col items-center justify-center p-3 rounded-xl bg-white hover:bg-[#F3EFE9] border border-[#E0D8CE] text-[#181512] transition-colors text-center group cursor-pointer"
                   title="Partager sur X (Twitter)"
                 >
                   <div className="w-7 h-7 rounded-full bg-black text-white flex items-center justify-center mb-1 text-xs font-bold shadow-sm group-hover:scale-105 transition-transform">
@@ -780,7 +831,7 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-[#181512] flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-[#C5A880]" />
-                    Légende pour Instagram / TikTok
+                    Légende ({angleLabel}) pour Instagram / TikTok
                   </span>
                   <button
                     type="button"
@@ -800,31 +851,18 @@ Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
                     )}
                   </button>
                 </div>
-                <p className="text-[11px] text-[#6A5E52] bg-[#FAF8F5] p-2.5 rounded-xl border border-[#ECE4DA] font-mono leading-relaxed line-clamp-3">
-                  {instagramCaption}
-                </p>
+                <textarea
+                  readOnly
+                  rows={4}
+                  value={instagramCaption}
+                  className="w-full bg-[#FAF8F5] border border-[#E0D8CE] rounded-xl p-2.5 text-xs text-[#181512] font-mono leading-relaxed resize-none select-all focus:outline-none"
+                />
               </div>
 
             </div>
           )}
 
         </div>
-
-        {/* Footer */}
-        <div className="bg-[#F3EFE9] px-5 py-3 border-t border-[#E5DDD2] flex items-center justify-between shrink-0">
-          <div className="text-[10px] text-[#8C7A6B] flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-[#C5A880]" />
-            <span>Maison Van's Atelier Digital</span>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-white hover:bg-[#EAE3DA] text-xs font-semibold text-[#181512] border border-[#D5CABE] transition-colors cursor-pointer"
-          >
-            Fermer
-          </button>
-        </div>
-
       </div>
     </div>
   );
