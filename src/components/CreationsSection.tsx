@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { Creation } from '../types';
 import { 
@@ -12,8 +12,12 @@ import {
   Share2, 
   Heart, 
   MessageSquare,
-  ChevronLeft,
-  ChevronRight
+  ChevronLeft, 
+  ChevronRight,
+  SlidersHorizontal,
+  Crown,
+  Gem,
+  Wine
 } from 'lucide-react';
 import { 
   generateWhatsAppLink, 
@@ -32,6 +36,7 @@ interface CreationCardProps {
   onShare: (creation: Creation) => void;
   whatsappNumber: string;
   studioName: string;
+  cardIndex: number;
 }
 
 const CreationCard: React.FC<CreationCardProps> = ({
@@ -42,6 +47,7 @@ const CreationCard: React.FC<CreationCardProps> = ({
   onShare,
   whatsappNumber,
   studioName,
+  cardIndex
 }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -95,9 +101,9 @@ const CreationCard: React.FC<CreationCardProps> = ({
   );
 
   return (
-    <div className="group bg-white rounded-[28px] overflow-hidden border border-[#EAE3DA]/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_45px_-10px_rgba(27,67,50,0.18)] hover:border-[#C5A880]/60 transition-all duration-500 flex flex-col justify-between select-none transform hover:-translate-y-1.5">
+    <div className="group bg-white rounded-[28px] overflow-hidden border border-[#EAE3DA]/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_45px_-10px_rgba(27,67,50,0.18)] hover:border-[#C5A880]/60 transition-all duration-500 flex flex-col justify-between select-none transform hover:-translate-y-1.5 will-change-transform">
       
-      {/* Image Container with 3:4 Editorial Ratio & Touch Swipe */}
+      {/* Image Container with 3:4 Editorial Ratio & Lightweight Optimized Loading */}
       <div 
         onClick={() => onSelectDetail(creation)}
         onTouchStart={handleTouchStart}
@@ -108,6 +114,8 @@ const CreationCard: React.FC<CreationCardProps> = ({
         <img
           src={currentDisplayImage}
           alt={`${creation.title} - ${angleLabel}`}
+          loading={cardIndex < 3 ? "eager" : "lazy"}
+          decoding="async"
           className="w-full h-full object-cover object-top transition-all duration-500 ease-out group-hover:scale-105 filter contrast-[1.04]"
         />
 
@@ -343,30 +351,60 @@ export const CreationsSection: React.FC = () => {
     settings, 
     selectedOccasionFilter, 
     setSelectedOccasionFilter, 
-    setSelectedCreationForDetail,
-    likedCreationIds,
-    toggleLikeCreation
+    setSelectedCreationForDetail, 
+    likedCreationIds, 
+    toggleLikeCreation 
   } = useStudio();
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [sharingCreation, setSharingCreation] = useState<Creation | null>(null);
+  
+  // Horizontal Scroll Ref for Filter Bar
+  const filtersScrollRef = useRef<HTMLDivElement>(null);
 
   // Active filter ID
   const activeUniverseId = selectedOccasionFilter || 'all';
 
-  // Curated Universes / Occasions for 1-click filter (includes Wishlist)
+  // Compute real-time item counts for each universe
+  const countsByUniverse = useMemo(() => {
+    const counts: Record<string, number> = {
+      all: creations.length,
+      favorites: likedCreationIds.length,
+    };
+    creations.forEach((c) => {
+      if (c.occasionId) {
+        counts[c.occasionId] = (counts[c.occasionId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [creations, likedCreationIds]);
+
+  // Curated Universes / Occasions for 1-click filter with custom icons
   const universeFilters = useMemo(() => {
     return [
-      { id: 'all', name: 'Toutes les Pièces' },
+      { 
+        id: 'all', 
+        name: 'Toutes les Pièces', 
+        count: countsByUniverse['all'] || 0,
+        icon: Sparkles 
+      },
       { 
         id: 'favorites', 
-        name: `Coups de Cœur (${likedCreationIds.length})`,
-        isHeart: true 
+        name: 'Coups de Cœur', 
+        count: countsByUniverse['favorites'] || 0,
+        isHeart: true,
+        icon: Heart
       },
-      ...occasions.map(occ => ({ id: occ.id, name: occ.name, isHeart: false }))
+      ...occasions.map((occ) => ({
+        id: occ.id,
+        name: occ.name,
+        count: countsByUniverse[occ.id] || 0,
+        isHeart: false,
+        icon: occ.id.includes('mariage') ? Gem : occ.id.includes('gala') ? Crown : Wine
+      }))
     ];
-  }, [occasions, likedCreationIds.length]);
+  }, [occasions, countsByUniverse]);
 
   // Filtered Creations
   const filteredCreations = useMemo(() => {
@@ -406,6 +444,19 @@ export const CreationsSection: React.FC = () => {
     });
   }, [creations, activeUniverseId, likedCreationIds, searchQuery]);
 
+  // Scroll helpers
+  const handleScrollLeft = () => {
+    if (filtersScrollRef.current) {
+      filtersScrollRef.current.scrollBy({ left: -220, behavior: 'smooth' });
+    }
+  };
+
+  const handleScrollRight = () => {
+    if (filtersScrollRef.current) {
+      filtersScrollRef.current.scrollBy({ left: 220, behavior: 'smooth' });
+    }
+  };
+
   return (
     <section id="creations-section" className="py-10 sm:py-16 bg-[#FAF8F5] min-h-screen font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
@@ -413,7 +464,7 @@ export const CreationsSection: React.FC = () => {
         {/* ========================================================================= */}
         {/* SECTION HEADER: PURE HAUTE COUTURE                                       */}
         {/* ========================================================================= */}
-        <div className="text-center max-w-3xl mx-auto space-y-3.5 mb-10 sm:mb-14">
+        <div className="text-center max-w-3xl mx-auto space-y-3.5 mb-8 sm:mb-12">
           <div 
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F0EBE3] border border-[#D8CFC4] text-[#8C7A6B] text-[10px] sm:text-[11px] font-bold tracking-[0.20em] uppercase shadow-sm"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
@@ -441,57 +492,109 @@ export const CreationsSection: React.FC = () => {
         </div>
 
         {/* ========================================================================= */}
-        {/* STREAMLINED UNIVERSE SELECTOR & MINIMALIST SEARCH                         */}
+        {/* DYNAMIC, LIVELY HORIZONTAL FILTER STRIP & MINIMALIST SEARCH               */}
         {/* ========================================================================= */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-10 pb-6 border-b border-[#EAE3DA]">
+        <div className="space-y-4 mb-10 pb-6 border-b border-[#EAE3DA]">
           
-          {/* 1-Click Universe Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none">
-            {universeFilters.map((u) => {
-              const isActive = activeUniverseId === u.id;
-              return (
-                <button
-                  key={u.id}
-                  onClick={() => setSelectedOccasionFilter(u.id === 'all' ? null : u.id)}
-                  className={`shrink-0 flex items-center gap-1.5 px-4 sm:px-5 py-2.5 rounded-full text-[11px] font-bold tracking-[0.16em] uppercase transition-all duration-300 cursor-pointer ${
-                    isActive
-                      ? u.isHeart 
-                        ? 'bg-[#6E2333] text-rose-100 shadow-md scale-[1.02] border border-rose-400/40'
-                        : 'bg-[#181512] text-[#FAF8F5] shadow-md scale-[1.02]'
-                      : u.isHeart
-                        ? 'bg-white text-rose-800 hover:bg-rose-50 border border-rose-200'
-                        : 'bg-white text-[#6B5F54] hover:bg-[#EFEAE2] border border-[#E0D7CC] hover:text-[#181512]'
-                  }`}
-                  style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                >
-                  {u.isHeart && (
-                    <Heart className={`w-3.5 h-3.5 ${isActive ? 'fill-rose-300 text-rose-300' : 'fill-rose-500 text-rose-500'}`} />
-                  )}
-                  <span>{u.name}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Minimalist Search Bar */}
-          <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 text-[#8C7A6B] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher une robe, soie..."
-              className="w-full pl-10 pr-8 py-2.5 bg-white rounded-full text-xs text-[#181512] border border-[#E0D7CC] focus:outline-none focus:border-[#1B4332] focus:ring-2 focus:ring-[#1B4332]/10 transition-all placeholder:text-[#9E9082] shadow-xs"
-              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            />
-            {searchQuery && (
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+            
+            {/* Filter Pills with Left & Right Arrows + Visual Hint */}
+            <div className="relative w-full lg:w-auto flex-1 max-w-4xl">
+              
+              {/* Left Arrow Button */}
               <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-[#8C7A6B] hover:text-[#181512]"
+                type="button"
+                onClick={handleScrollLeft}
+                className="hidden sm:flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/95 border border-[#DCD3C7] shadow-md items-center justify-center text-[#181512] hover:bg-[#181512] hover:text-white transition-colors cursor-pointer"
+                title="Faire défiler vers la gauche"
+                aria-label="Faire défiler vers la gauche"
               >
-                ✕
+                <ChevronLeft className="w-4 h-4" />
               </button>
-            )}
+
+              {/* Scroll Container with Fade Edges */}
+              <div 
+                ref={filtersScrollRef}
+                className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-1 scrollbar-none px-1 scroll-smooth"
+              >
+                {universeFilters.map((u) => {
+                  const isActive = activeUniverseId === u.id;
+                  const IconComp = u.icon;
+                  return (
+                    <button
+                      key={u.id}
+                      onClick={() => setSelectedOccasionFilter(u.id === 'all' ? null : u.id)}
+                      className={`shrink-0 flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-full text-[11px] font-bold tracking-[0.14em] uppercase transition-all duration-300 cursor-pointer ${
+                        isActive
+                          ? u.isHeart 
+                            ? 'bg-[#6E2333] text-rose-100 shadow-md scale-[1.03] border border-rose-400/50 ring-2 ring-rose-400/20'
+                            : 'bg-[#181512] text-[#FAF8F5] shadow-md scale-[1.03] ring-2 ring-[#C5A880]/30'
+                          : u.isHeart
+                            ? 'bg-white text-rose-800 hover:bg-rose-50 border border-rose-200 hover:border-rose-300'
+                            : 'bg-white text-[#6B5F54] hover:bg-[#EFEAE2] border border-[#E0D7CC] hover:text-[#181512] hover:border-[#C5A880]/40'
+                      }`}
+                      style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                    >
+                      <IconComp className={`w-3.5 h-3.5 ${
+                        isActive 
+                          ? (u.isHeart ? 'fill-rose-300 text-rose-300' : 'text-[#C5A880]')
+                          : (u.isHeart ? 'fill-rose-500 text-rose-500' : 'text-[#8C7A6B]')
+                      }`} />
+                      
+                      <span>{u.name}</span>
+
+                      {/* Count Badge */}
+                      <span className={`text-[9.5px] font-mono px-2 py-0.5 rounded-full ${
+                        isActive 
+                          ? (u.isHeart ? 'bg-rose-950/50 text-rose-200' : 'bg-white/20 text-[#C5A880]')
+                          : 'bg-[#F2ECE4] text-[#6A5E52]'
+                      }`}>
+                        {u.count}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {/* More Filters Animated Hint Pill */}
+                <div className="shrink-0 flex items-center gap-1 text-[10px] text-[#A89C8F] font-bold tracking-wider uppercase pl-2 pr-4 animate-pulse select-none">
+                  <span>Plus d'univers</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-[#C5A880]" />
+                </div>
+              </div>
+
+              {/* Right Arrow Button */}
+              <button
+                type="button"
+                onClick={handleScrollRight}
+                className="hidden sm:flex absolute -right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/95 border border-[#DCD3C7] shadow-md items-center justify-center text-[#181512] hover:bg-[#181512] hover:text-white transition-colors cursor-pointer"
+                title="Faire défiler vers la droite"
+                aria-label="Faire défiler vers la droite"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Minimalist Search Bar with Real-time count */}
+            <div className="relative w-full lg:w-72 shrink-0">
+              <Search className="w-4 h-4 text-[#8C7A6B] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Rechercher une robe, soie..."
+                className="w-full pl-10 pr-8 py-2.5 bg-white rounded-full text-xs text-[#181512] border border-[#E0D7CC] focus:outline-none focus:border-[#1B4332] focus:ring-2 focus:ring-[#1B4332]/10 transition-all placeholder:text-[#9E9082] shadow-xs"
+                style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-[#8C7A6B] hover:text-[#181512]"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
           </div>
 
         </div>
@@ -574,7 +677,7 @@ export const CreationsSection: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7 sm:gap-8 lg:gap-10">
-            {filteredCreations.map((creation) => {
+            {filteredCreations.map((creation, idx) => {
               const isLiked = likedCreationIds.includes(creation.id);
 
               return (
@@ -587,6 +690,7 @@ export const CreationsSection: React.FC = () => {
                   onShare={(c) => setSharingCreation(c)}
                   whatsappNumber={settings.whatsappNumber}
                   studioName={settings.studioName}
+                  cardIndex={idx}
                 />
               );
             })}

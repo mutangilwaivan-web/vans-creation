@@ -123,10 +123,10 @@ export const INITIAL_CREATIONS: Creation[] = [
     fabrics: ['Soie sauvage moirée', 'Organza plissé métallisé', 'Doublure satin duchesse', 'Baleinage couturier'],
     silhouette: 'Sculpturale & Évasée avec traîne impériale et bustier gainant',
     images: [
-      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1400&q=85', // Vue de Face
-      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1400&q=85', // Vue de Profil
-      'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=1400&q=85', // Vue de Dos / Traîne
-      'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1400&q=85'  // Détail Tissage & Plissé
+      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=750&q=75', // Vue de Face
+      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=750&q=75', // Vue de Profil
+      'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=750&q=75', // Vue de Dos / Traîne
+      'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=750&q=75'  // Détail Tissage & Plissé
     ],
     videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-fashion-model-in-a-black-dress-41584-large.mp4',
     coutureLine: 'Ligne Gala & Tapis Rouge',
@@ -172,10 +172,10 @@ export const INITIAL_CREATIONS: Creation[] = [
     fabrics: ['Mikado de soie italien', 'Dentelle perlée artisanale', 'Tulle illusion', 'Doublure pongé de soie'],
     silhouette: 'Princesse épurée avec découpe princesse, corset intégré et traîne cathédrale',
     images: [
-      'https://images.unsplash.com/photo-1594552072238-b8a33785b261?auto=format&fit=crop&w=1400&q=85', // Vue de Face
-      'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1400&q=85', // Vue d’ensemble
-      'https://images.unsplash.com/photo-1546804784-896d0dca3805?auto=format&fit=crop&w=1400&q=85', // Vue de Dos & Traîne
-      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1400&q=85'  // Détail Dentelle & Perles
+      'https://images.unsplash.com/photo-1594552072238-b8a33785b261?auto=format&fit=crop&w=750&q=75', // Vue de Face
+      'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=750&q=75', // Vue d’ensemble
+      'https://images.unsplash.com/photo-1546804784-896d0dca3805?auto=format&fit=crop&w=750&q=75', // Vue de Dos & Traîne
+      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=750&q=75'  // Détail Dentelle & Perles
     ],
     videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-woman-in-a-white-dress-walking-on-a-beach-41484-large.mp4',
     priceEstimate: 'Sur devis (Confection sur-mesure dès 1 200$)',
@@ -206,10 +206,10 @@ export const INITIAL_CREATIONS: Creation[] = [
     fabrics: ['Crêpe de laine fin', 'Satin de soie duchesse pour revers', 'Doublure jacquard respirante'],
     silhouette: 'Veste structurée à épaules tailleur & Pantalon palazzo taille haute',
     images: [
-      'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1400&q=85', // Vue de Face
-      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1400&q=85', // Vue de Profil
-      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1400&q=85', // Vue d’ensemble
-      'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=1400&q=85'  // Détail Revers Satin
+      'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=750&q=75', // Vue de Face
+      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=750&q=75', // Vue de Profil
+      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=750&q=75', // Vue d’ensemble
+      'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=750&q=75'  // Détail Revers Satin
     ],
     priceEstimate: 'Sur devis (Dès 690$)',
     preparationTime: '3 à 4 semaines (2 essayages)',
@@ -239,10 +239,10 @@ export const INITIAL_CREATIONS: Creation[] = [
     fabrics: ['Mousseline plissée soleil', 'Crêpe envers satin lourd', 'Doublure stretch gainante'],
     silhouette: 'Fourreau sculptant le corps avec fente latérale haute et col corolle',
     images: [
-      'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=1400&q=85', // Vue de Face
-      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1400&q=85', // Vue de Profil
-      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1400&q=85', // Vue de Dos
-      'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1400&q=85'  // Détail Plissé Soleil
+      'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=750&q=75', // Vue de Face
+      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=750&q=75', // Vue de Profil
+      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=750&q=75', // Vue de Dos
+      'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=750&q=75'  // Détail Plissé Soleil
     ],
     videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-model-posing-in-a-fashion-dress-41588-large.mp4',
     priceEstimate: 'Sur devis (Dès 750$)',
@@ -272,10 +272,10 @@ export const INITIAL_CREATIONS: Creation[] = [
     fabrics: ['Mousseline de soie vaporeuse', 'Doublure viscose respirante', 'Biais en satin'],
     silhouette: 'Évasée taille haute avec jeu de transparence aux manches lanternes',
     images: [
-      'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=1400&q=85', // Vue de Face
-      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1400&q=85', // Vue de Profil
-      'https://images.unsplash.com/photo-1594552072238-b8a33785b261?auto=format&fit=crop&w=1400&q=85', // Vue de Dos
-      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1400&q=85'  // Détail Mousseline & Transparence
+      'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=750&q=75', // Vue de Face
+      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=750&q=75', // Vue de Profil
+      'https://images.unsplash.com/photo-1594552072238-b8a33785b261?auto=format&fit=crop&w=750&q=75', // Vue de Dos
+      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=750&q=75'  // Détail Mousseline & Transparence
     ],
     priceEstimate: 'Sur devis (Dès 480$)',
     preparationTime: '2 à 3 semaines',
@@ -304,10 +304,10 @@ export const INITIAL_CREATIONS: Creation[] = [
     fabrics: ['Velours de soie lourd', 'Plastron brodé or fait main', 'Doublure satin duchesse champagne'],
     silhouette: 'Fourreau royal avec col officier et fente arrière bordée d’or',
     images: [
-      'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=1400&q=85', // Vue de Face
-      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1400&q=85', // Vue de Profil
-      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1400&q=85', // Vue de Dos
-      'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1400&q=85'  // Détail Broderie Fil d’Or
+      'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=750&q=75', // Vue de Face
+      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=750&q=75', // Vue de Profil
+      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=750&q=75', // Vue de Dos
+      'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=750&q=75'  // Détail Broderie Fil d’Or
     ],
     videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-fashion-model-in-a-glittering-dress-41590-large.mp4',
     priceEstimate: 'Sur devis (Confection sur-mesure dès 950$)',
@@ -338,10 +338,10 @@ export const INITIAL_CREATIONS: Creation[] = [
     fabrics: ['Satin de soie lourd nacré', 'Crêpe envers satin', 'Boutons bijou cristaux'],
     silhouette: 'Cape drapée asymétrique & Pantalon fuseau taille haute',
     images: [
-      'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1400&q=85', // Vue de Face
-      'https://images.unsplash.com/photo-1594552072238-b8a33785b261?auto=format&fit=crop&w=1400&q=85', // Vue d’ensemble
-      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1400&q=85', // Vue de Dos
-      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1400&q=85'  // Détail Cape & Satin
+      'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=750&q=75', // Vue de Face
+      'https://images.unsplash.com/photo-1594552072238-b8a33785b261?auto=format&fit=crop&w=750&q=75', // Vue d’ensemble
+      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=750&q=75', // Vue de Dos
+      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=750&q=75'  // Détail Cape & Satin
     ],
     priceEstimate: 'Sur devis (Dès 720$)',
     preparationTime: '3 à 4 semaines',
@@ -370,10 +370,10 @@ export const INITIAL_CREATIONS: Creation[] = [
     fabrics: ['Gazar de soie texturé', 'Taffetas de soie', 'Doublure stretch'],
     silhouette: 'Trapèze structuré avec plastron origami et dos nu géométrique',
     images: [
-      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1400&q=85', // Vue de Face
-      'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=1400&q=85', // Vue de Profil
-      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1400&q=85', // Vue de Dos
-      'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1400&q=85'  // Détail Découpe Origami
+      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=750&q=75', // Vue de Face
+      'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=750&q=75', // Vue de Profil
+      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=750&q=75', // Vue de Dos
+      'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=750&q=75'  // Détail Découpe Origami
     ],
     priceEstimate: 'Sur devis (Dès 540$)',
     preparationTime: '2 à 3 semaines',
