@@ -14,6 +14,7 @@ import {
   ShieldCheck 
 } from 'lucide-react';
 import { generateWhatsAppLink, buildCreationOrderMessage } from '../data/initialData';
+import { ShareModal } from './ShareModal';
 
 interface ImmersiveProductSheetProps {
   creation: Creation;
@@ -33,7 +34,7 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
 }) => {
   const { settings } = useStudio();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [copiedLink, setCopiedLink] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const images = creation.images && creation.images.length > 0 
     ? creation.images 
@@ -55,33 +56,6 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [images.length, onClose]);
-
-  // Native Share Handler
-  const handleShare = async () => {
-    const shareUrl = `${window.location.origin}${window.location.pathname}?robe=${encodeURIComponent(creation.slug || creation.id)}`;
-    const shareText = `Découvrez la création « ${creation.title} » par Vanessa Kaniki — Maison Van's Haute Couture :`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${creation.title} | Maison Van's`,
-          text: shareText,
-          url: shareUrl,
-        });
-      } catch (err) {
-        // User cancelled share
-      }
-    } else {
-      // Fallback: copy link to clipboard
-      try {
-        await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-        setCopiedLink(true);
-        setTimeout(() => setCopiedLink(false), 2500);
-      } catch (e) {
-        console.error('Clipboard error:', e);
-      }
-    }
-  };
 
   const directWaUrl = generateWhatsAppLink(
     settings.whatsappNumber,
@@ -344,26 +318,27 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
             </div>
 
             <button
-              onClick={handleShare}
-              className="inline-flex items-center gap-1.5 text-xs text-[#181512] hover:text-[#1B4332] font-semibold transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-white"
+              onClick={() => setIsShareModalOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs text-[#181512] hover:text-[#1B4332] font-semibold transition-colors cursor-pointer py-1.5 px-3 rounded-lg hover:bg-white border border-[#E8E1D7] shadow-xs active:scale-95"
             >
-              {copiedLink ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-emerald-700">Lien copié !</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-3.5 h-3.5 text-[#8C7A6B]" />
-                  <span>Partager</span>
-                </>
-              )}
+              <Share2 className="w-3.5 h-3.5 text-[#C5A880]" />
+              <span>Partager la robe</span>
             </button>
           </div>
 
         </div>
 
       </div>
+
+      {/* Rich Viral Share Modal */}
+      {isShareModalOpen && (
+        <ShareModal
+          item={creation}
+          type="creation"
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+        />
+      )}
 
     </div>
   );

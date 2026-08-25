@@ -8,9 +8,11 @@ import {
   Eye, 
   Scissors, 
   Clock, 
-  RotateCcw
+  RotateCcw,
+  Share2
 } from 'lucide-react';
 import { generateWhatsAppLink, buildCreationOrderMessage } from '../data/initialData';
+import { ShareModal } from './ShareModal';
 
 export const CreationsSection: React.FC = () => {
   const { 
@@ -25,6 +27,7 @@ export const CreationsSection: React.FC = () => {
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [hoveredCreationId, setHoveredCreationId] = useState<string | null>(null);
+  const [sharingCreation, setSharingCreation] = useState<Creation | null>(null);
 
   // Curated Universes / Occasions for 1-click filter
   const universeFilters = useMemo(() => {
@@ -279,34 +282,51 @@ export const CreationsSection: React.FC = () => {
                       ))}
                     </div>
 
-                    {/* Direct WhatsApp Ordering Bar with Shimmer */}
-                    <div className="pt-3.5 border-t border-[#EAE3DA] flex items-center justify-between gap-3">
+                    {/* Direct WhatsApp Ordering & Quick Share Bar */}
+                    <div className="pt-3.5 border-t border-[#EAE3DA] flex items-center justify-between gap-2">
                       <div className="text-left">
                         <span 
-                          className="text-[9.5px] uppercase tracking-wider text-[#8C7A6B] font-semibold block"
+                          className="text-[9px] uppercase tracking-wider text-[#8C7A6B] font-semibold block"
                           style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                         >
                           Confection
                         </span>
                         <span 
-                          className="font-bold text-sm text-[#181512]"
+                          className="font-bold text-xs sm:text-sm text-[#181512]"
                           style={{ fontFamily: "'Cinzel', serif" }}
                         >
                           Sur-Mesure
                         </span>
                       </div>
 
-                      <a
-                        href={whatsappUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-shimmer inline-flex items-center gap-1.5 px-4.5 py-2.5 rounded-full bg-[#1B4332] hover:bg-[#143528] text-white text-[11px] font-bold tracking-[0.14em] uppercase transition-all duration-300 shadow-sm hover:shadow-lg cursor-pointer border border-[#2D6A4F]/40 active:scale-[0.97]"
-                        title="Commander cette pièce sur WhatsApp"
-                        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                      >
-                        <MessageCircle className="w-3.5 h-3.5 fill-current text-[#25D366]" />
-                        <span>Commander</span>
-                      </a>
+                      <div className="flex items-center gap-1.5">
+                        {/* Quick 1-Click Share Button for WhatsApp Status & Stories */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSharingCreation(creation);
+                          }}
+                          className="p-2.5 rounded-full bg-[#FAF8F5] hover:bg-[#EFEAE2] text-[#8C7A6B] hover:text-[#181512] border border-[#E0D7CC] transition-colors cursor-pointer active:scale-95 shadow-xs"
+                          title="Partager en statut WhatsApp ou story"
+                          aria-label="Partager cette création"
+                        >
+                          <Share2 className="w-3.5 h-3.5 text-[#C5A880]" />
+                        </button>
+
+                        {/* Order WhatsApp Direct CTA */}
+                        <a
+                          href={whatsappUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-shimmer inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full bg-[#1B4332] hover:bg-[#143528] text-white text-[10.5px] sm:text-[11px] font-bold tracking-[0.14em] uppercase transition-all duration-300 shadow-sm hover:shadow-lg cursor-pointer border border-[#2D6A4F]/40 active:scale-[0.97]"
+                          title="Commander cette pièce sur WhatsApp"
+                          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 fill-current text-[#25D366]" />
+                          <span>Commander</span>
+                        </a>
+                      </div>
                     </div>
                   </div>
 
@@ -317,6 +337,17 @@ export const CreationsSection: React.FC = () => {
         )}
 
       </div>
+
+      {/* 1-Click Viral Creation Share Modal */}
+      {sharingCreation && (
+        <ShareModal
+          item={sharingCreation}
+          type="creation"
+          isOpen={Boolean(sharingCreation)}
+          onClose={() => setSharingCreation(null)}
+        />
+      )}
+
     </section>
   );
 };
