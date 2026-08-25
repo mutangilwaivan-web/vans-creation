@@ -5,7 +5,6 @@ import {
   X, 
   MessageCircle, 
   Share2, 
-  Check, 
   Scissors, 
   Sparkles, 
   Clock, 
@@ -16,7 +15,6 @@ import {
   Star,
   Send,
   MessageSquare,
-  User,
   CheckCircle2
 } from 'lucide-react';
 import { generateWhatsAppLink, buildCreationOrderMessage } from '../data/initialData';
@@ -119,14 +117,63 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
   );
 
   return (
-    <div className="flex flex-col lg:flex-row h-full max-h-[92vh] sm:max-h-[90vh] bg-[#FAF8F5] overflow-y-auto lg:overflow-hidden select-none font-sans">
+    <div className="flex flex-col lg:flex-row h-full max-h-[92vh] bg-[#FAF8F5] overflow-y-auto lg:overflow-hidden select-none font-sans relative">
       
+      {/* ========================================================================= */}
+      {/* MOBILE STICKY TOP BAR                                                     */}
+      {/* ========================================================================= */}
+      <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#EAE3DA]">
+        <div className="flex items-center gap-2">
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1.5 -ml-1 rounded-full text-[#181512] hover:bg-[#EAE3DA] transition-colors cursor-pointer"
+              aria-label="Retour"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+          <span 
+            className="text-xs font-bold uppercase tracking-widest text-[#181512] truncate max-w-[170px]"
+            style={{ fontFamily: "'Cinzel', serif" }}
+          >
+            {creation.title}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Like Heart Button */}
+          <button
+            type="button"
+            onClick={() => toggleLikeCreation(creation.id)}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              isLiked
+                ? 'bg-rose-100 text-rose-700 border border-rose-300'
+                : 'bg-white text-[#6A5E52] border border-[#E0D7CC]'
+            }`}
+          >
+            <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-600 text-rose-600' : 'text-[#8C7A6B]'}`} />
+            <span className="font-mono text-[11px]">{creation.likesCount || 0}</span>
+          </button>
+
+          {/* Share Button */}
+          <button
+            type="button"
+            onClick={() => setIsShareModalOpen(true)}
+            className="p-1.5 rounded-full bg-white text-[#181512] border border-[#E0D7CC] hover:bg-[#EAE3DA] transition-colors cursor-pointer"
+            aria-label="Partager"
+          >
+            <Share2 className="w-4 h-4 text-[#C5A880]" />
+          </button>
+        </div>
+      </div>
+
       {/* ========================================================================= */}
       {/* LEFT: MAJESTIC PHOTOGRAPHIC GALLERY                                      */}
       {/* ========================================================================= */}
-      <div className="lg:w-[54%] relative bg-[#181512] flex flex-col justify-between overflow-hidden aspect-[4/5] sm:aspect-square lg:aspect-auto shrink-0">
+      <div className="lg:w-[52%] relative bg-[#181512] flex flex-col justify-between overflow-hidden aspect-[3/4] sm:aspect-[4/5] lg:aspect-auto shrink-0">
         
-        {/* Main Photograph with Smooth Transition */}
+        {/* Main Photograph */}
         <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
           <img
             src={images[currentImageIndex]}
@@ -138,15 +185,15 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
         </div>
 
-        {/* Top Badges & Actions over Photo */}
-        <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
+        {/* Desktop Top Badges & Actions */}
+        <div className="hidden lg:flex absolute top-4 left-4 right-4 items-center justify-between z-10">
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/60 backdrop-blur-md text-[#C5A880] text-[10px] font-bold tracking-widest uppercase border border-[#C5A880]/30 shadow-sm">
             <Sparkles className="w-3 h-3 text-[#C5A880]" />
             <span>{creation.categories[0] || 'Haute Couture'}</span>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Interactive Like Button */}
+            {/* Desktop Like Button */}
             <button
               type="button"
               onClick={() => toggleLikeCreation(creation.id)}
@@ -161,21 +208,10 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
               <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-400 text-rose-400' : 'text-white'}`} />
               <span className="text-[11px] font-bold font-mono">{creation.likesCount || 0}</span>
             </button>
-
-            {/* Mobile close button on photo */}
-            {onClose && (
-              <button
-                onClick={onClose}
-                className="lg:hidden p-1.5 rounded-full bg-black/60 backdrop-blur-md text-white hover:bg-black/80 transition-colors cursor-pointer"
-                aria-label="Fermer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Gallery Navigation Arrows (if multiple images) */}
+        {/* Gallery Navigation Arrows */}
         {images.length > 1 && (
           <div className="absolute inset-y-0 inset-x-3 flex items-center justify-between pointer-events-none z-10">
             <button
@@ -196,38 +232,44 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
           </div>
         )}
 
-        {/* Bottom Thumbnail Strip */}
-        {images.length > 1 && (
-          <div className="absolute bottom-4 inset-x-4 flex items-center justify-center gap-2 z-10">
-            {images.map((img, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentImageIndex(idx)}
-                className={`w-12 h-14 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
-                  currentImageIndex === idx
-                    ? 'border-[#C5A880] scale-105 shadow-md'
-                    : 'border-white/30 opacity-70 hover:opacity-100'
-                }`}
-              >
-                <img
-                  src={img}
-                  alt={`Vignette ${idx + 1}`}
-                  className="w-full h-full object-cover object-top"
-                />
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Bottom Thumbnail Strip & Angle Indicator */}
+        <div className="absolute bottom-3 inset-x-3 flex flex-col items-center gap-2 z-10">
+          <span className="text-[10px] text-white/90 bg-black/60 px-3 py-1 rounded-full backdrop-blur-md font-medium tracking-wide">
+            {currentAngle}
+          </span>
+          
+          {images.length > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              {images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentImageIndex(idx)}
+                  className={`w-10 h-12 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                    currentImageIndex === idx
+                      ? 'border-[#C5A880] scale-105 shadow-md'
+                      : 'border-white/30 opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <img
+                    src={img}
+                    alt={`Vignette ${idx + 1}`}
+                    className="w-full h-full object-cover object-top"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* RIGHT: CARTEL COUTURE, REVIEWS & DIRECT WHATSAPP ACTION                  */}
+      {/* RIGHT: CARTEL COUTURE, SOCIAL INTERACTIONS, REVIEWS & CTA                */}
       {/* ========================================================================= */}
-      <div className="lg:w-[46%] p-5 sm:p-7 lg:p-8 flex flex-col justify-between overflow-y-auto">
+      <div className="lg:w-[48%] p-5 sm:p-7 lg:p-8 flex flex-col justify-between overflow-y-auto pb-28 lg:pb-8">
         
         <div className="space-y-4">
           
-          {/* Header with Title & Close Button */}
+          {/* Header with Title & Desktop Close */}
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
               <span 
@@ -264,7 +306,47 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
             )}
           </div>
 
-          {/* Sub-Navigation Tabs: Fiche Technique vs Impressions */}
+          {/* Social Engagement Banner (Likes / Comments / Share) */}
+          <div className="flex items-center gap-2 p-2 bg-white rounded-2xl border border-[#EAE3DA] shadow-xs">
+            {/* Heart Button */}
+            <button
+              type="button"
+              onClick={() => toggleLikeCreation(creation.id)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                isLiked
+                  ? 'bg-rose-50 text-rose-700 border border-rose-200 shadow-xs'
+                  : 'bg-[#FAF8F5] text-[#181512] hover:bg-[#EFEAE2] border border-[#E8E1D7]'
+              }`}
+            >
+              <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-600 text-rose-600' : 'text-[#8C7A6B]'}`} />
+              <span>{creation.likesCount || 0} J'aime</span>
+            </button>
+
+            {/* Comment Switcher */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveRightTab('comments');
+                setShowCommentForm(true);
+              }}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-[#FAF8F5] hover:bg-[#EFEAE2] text-[#181512] border border-[#E8E1D7] text-xs font-bold transition-all cursor-pointer active:scale-95"
+            >
+              <MessageSquare className="w-4 h-4 text-[#C5A880]" />
+              <span>{commentsList.length} Avis</span>
+            </button>
+
+            {/* Share Modal Trigger */}
+            <button
+              type="button"
+              onClick={() => setIsShareModalOpen(true)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-[#FAF8F5] hover:bg-[#EFEAE2] text-[#181512] border border-[#E8E1D7] text-xs font-bold transition-all cursor-pointer active:scale-95"
+            >
+              <Share2 className="w-4 h-4 text-[#C5A880]" />
+              <span>Partager</span>
+            </button>
+          </div>
+
+          {/* Sub-Navigation Tabs */}
           <div className="flex items-center gap-2 p-1 bg-[#EFEAE2] rounded-xl border border-[#DCD3C7]">
             <button
               type="button"
@@ -554,25 +636,25 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* BOTTOM ACTION BAR: 1 SINGLE ROYAL CTA + NATIVE SHARE                     */}
+        {/* BOTTOM ACTION BAR (STICKY ON MOBILE, STATIC ON DESKTOP)                  */}
         {/* ========================================================================= */}
-        <div className="pt-6 mt-6 border-t border-[#EAE3DA] space-y-3.5">
+        <div className="fixed bottom-0 inset-x-0 bg-[#FAF8F5]/95 backdrop-blur-md p-4 border-t border-[#EAE3DA] z-30 lg:static lg:p-0 lg:border-t-0 lg:pt-6 lg:mt-6 lg:border-t lg:border-[#EAE3DA] space-y-3">
           
           {/* Main WhatsApp Direct Button */}
           <a
             href={directWaUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-shimmer w-full flex items-center justify-center gap-3 bg-[#1B4332] hover:bg-[#143528] text-white py-4 rounded-2xl text-xs sm:text-sm font-bold tracking-[0.16em] uppercase transition-all duration-300 shadow-md hover:shadow-2xl transform hover:-translate-y-0.5 cursor-pointer border border-[#C5A880]/60 active:scale-[0.98]"
+            className="btn-shimmer w-full flex items-center justify-center gap-3 bg-[#1B4332] hover:bg-[#143528] text-white py-3.5 sm:py-4 rounded-2xl text-xs sm:text-sm font-bold tracking-[0.16em] uppercase transition-all duration-300 shadow-md hover:shadow-2xl transform hover:-translate-y-0.5 cursor-pointer border border-[#C5A880]/60 active:scale-[0.98]"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
             <MessageCircle className="w-4 h-4 fill-current text-[#25D366]" />
             <span>Commander cette pièce sur WhatsApp</span>
           </a>
 
-          {/* Sub-actions: Share & Atelier Guarantee */}
+          {/* Sub-actions for Desktop */}
           <div 
-            className="flex items-center justify-between text-xs text-[#7A7065] px-1"
+            className="hidden lg:flex items-center justify-between text-xs text-[#7A7065] px-1"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
             <div className="flex items-center gap-1.5 text-[#2D6A4F] font-medium">

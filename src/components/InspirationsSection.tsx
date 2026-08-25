@@ -291,7 +291,7 @@ export const InspirationsSection: React.FC = () => {
 
                       {item.sourceNotes && (
                         <p className="text-[11px] text-[#8C7A6B] italic pt-1 border-t border-[#F2ECE4]">
-                          ℹ️ {item.sourceNotes}
+                          Note d'Atelier : {item.sourceNotes}
                         </p>
                       )}
                     </div>

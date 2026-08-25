@@ -307,8 +307,59 @@ export const CreationsSection: React.FC = () => {
                       ))}
                     </div>
 
-                    {/* Direct WhatsApp Ordering & Quick Share Bar */}
-                    <div className="pt-3.5 border-t border-[#EAE3DA] flex items-center justify-between gap-2">
+                    {/* Interactive Social Engagement Row (Like / Comment / Share) */}
+                    <div className="pt-2 flex items-center justify-between border-t border-[#F2ECE4] text-xs">
+                      {/* Like Action */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleLikeCreation(creation.id);
+                        }}
+                        className={`inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg transition-all cursor-pointer select-none active:scale-95 ${
+                          likedCreationIds.includes(creation.id)
+                            ? 'text-rose-700 bg-rose-50 font-bold'
+                            : 'text-[#6A5E52] hover:text-[#181512] hover:bg-[#FAF8F5]'
+                        }`}
+                        title={likedCreationIds.includes(creation.id) ? 'Coup de cœur ajouté' : 'Ajouter aux coups de cœur'}
+                      >
+                        <Heart className={`w-3.5 h-3.5 ${likedCreationIds.includes(creation.id) ? 'fill-rose-600 text-rose-600' : 'text-[#8C7A6B]'}`} />
+                        <span className="font-mono text-[11px]">{creation.likesCount || 0}</span>
+                      </button>
+
+                      {/* Comment Action */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedCreationForDetail(creation);
+                        }}
+                        className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-[#6A5E52] hover:text-[#181512] hover:bg-[#FAF8F5] transition-all cursor-pointer select-none"
+                        title="Consulter et ajouter des avis"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-[#8C7A6B]" />
+                        <span className="text-[11px] font-medium">
+                          {(creation.comments && creation.comments.length > 0) ? `${creation.comments.length} avis` : 'Avis'}
+                        </span>
+                      </button>
+
+                      {/* Share Action */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSharingCreation(creation);
+                        }}
+                        className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-[#6A5E52] hover:text-[#181512] hover:bg-[#FAF8F5] transition-all cursor-pointer select-none"
+                        title="Partager cette création"
+                      >
+                        <Share2 className="w-3.5 h-3.5 text-[#C5A880]" />
+                        <span className="text-[11px] font-medium">Partager</span>
+                      </button>
+                    </div>
+
+                    {/* Direct WhatsApp Ordering Bar */}
+                    <div className="pt-2.5 border-t border-[#EAE3DA] flex items-center justify-between gap-2">
                       <div className="text-left">
                         <span 
                           className="text-[9px] uppercase tracking-wider text-[#8C7A6B] font-semibold block"
@@ -324,34 +375,17 @@ export const CreationsSection: React.FC = () => {
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
-                        {/* Quick 1-Click Share Button for WhatsApp Status & Stories */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSharingCreation(creation);
-                          }}
-                          className="p-2.5 rounded-full bg-[#FAF8F5] hover:bg-[#EFEAE2] text-[#8C7A6B] hover:text-[#181512] border border-[#E0D7CC] transition-colors cursor-pointer active:scale-95 shadow-xs"
-                          title="Partager en statut WhatsApp ou story"
-                          aria-label="Partager cette création"
-                        >
-                          <Share2 className="w-3.5 h-3.5 text-[#C5A880]" />
-                        </button>
-
-                        {/* Order WhatsApp Direct CTA */}
-                        <a
-                          href={whatsappUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-shimmer inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full bg-[#1B4332] hover:bg-[#143528] text-white text-[10.5px] sm:text-[11px] font-bold tracking-[0.14em] uppercase transition-all duration-300 shadow-sm hover:shadow-lg cursor-pointer border border-[#2D6A4F]/40 active:scale-[0.97]"
-                          title="Commander cette pièce sur WhatsApp"
-                          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                        >
-                          <MessageCircle className="w-3.5 h-3.5 fill-current text-[#25D366]" />
-                          <span>Commander</span>
-                        </a>
-                      </div>
+                      <a
+                        href={whatsappUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-shimmer inline-flex items-center gap-1.5 px-4 py-2 sm:py-2.5 rounded-full bg-[#1B4332] hover:bg-[#143528] text-white text-[10.5px] sm:text-[11px] font-bold tracking-[0.14em] uppercase transition-all duration-300 shadow-sm hover:shadow-lg cursor-pointer border border-[#2D6A4F]/40 active:scale-[0.97]"
+                        title="Commander cette pièce sur WhatsApp"
+                        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 fill-current text-[#25D366]" />
+                        <span>Commander</span>
+                      </a>
                     </div>
                   </div>
 
