@@ -2,9 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Only authenticated sessions can write to protected collections
+    // Only the authorized administrator email can write to protected collections
     function isAdmin() {
-      return request.auth != null;
+      return request.auth != null 
+        && (request.auth.token.email == 'mutangilwaivan@gmail.com' || request.auth.token.email == 'contact@vans-creation.com');
     }
 
     // Public read access for showroom catalog & settings

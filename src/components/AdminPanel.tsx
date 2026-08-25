@@ -39,9 +39,7 @@ import {
 import { generateWhatsAppLink } from '../data/initialData';
 import { VanessaQuickAddModal } from './VanessaQuickAddModal';
 import { AdminAuthScreen } from './AdminAuthScreen';
-import { auth, signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider, db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { hashSecret, verifySecret, AdminSecurityConfig, ADMIN_SECURITY_STORAGE_KEY } from '../lib/security';
+import { auth, signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail } from '../lib/firebase';
 
 type AdminTab = 'creations' | 'inspirations' | 'occasions' | 'testimonials' | 'settings' | 'share-tool' | 'backup';
 
@@ -149,7 +147,6 @@ export const AdminPanel: React.FC = () => {
   const [currentAdminPassword, setCurrentAdminPassword] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [confirmAdminPassword, setConfirmAdminPassword] = useState('');
-  const [newRecoveryPin, setNewRecoveryPin] = useState('');
   const [securityMessage, setSecurityMessage] = useState<string | null>(null);
   const [securityError, setSecurityError] = useState<string | null>(null);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
@@ -1872,14 +1869,14 @@ export const AdminPanel: React.FC = () => {
               <div className="space-y-1">
                 <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-[#C5A880]/20 text-[#8C7A6B] text-xs font-bold uppercase tracking-wider">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#C5A880]" />
-                  <span>Sécurité Cryptographique SHA-256</span>
+                  <span>Sécurité Google Firebase</span>
                 </div>
                 <h2 className="font-cinzel text-xl font-bold text-[#1E1B18] flex items-center gap-2">
                   <KeyRound className="w-5 h-5 text-[#C5A880]" />
                   <span>Sécurité des Accès & Mot de Passe Atelier</span>
                 </h2>
                 <p className="text-xs text-[#6B5F54]">
-                  Modifiez votre mot de passe d'accès confidentiel ou votre code secret de récupération (6 chiffres). Les données sont sécurisées par hachage cryptographique.
+                  Modifiez votre mot de passe d'accès confidentiel ou demandez l'envoi d'un email de réinitialisation sécurisé sur <strong>{settingsForm.email || settings.email}</strong>.
                 </p>
               </div>
 
@@ -1901,28 +1898,15 @@ export const AdminPanel: React.FC = () => {
                 onSubmit={async (e) => {
                   e.preventDefault();
                   if (!currentAdminPassword || currentAdminPassword.length < 6) {
-                    setSecurityError('Veuillez saisir votre mot de passe actuel pour valider les modifications.');
+                    setSecurityError('Veuillez saisir votre mot de passe actuel.');
                     return;
                   }
-
-                  if (!newAdminPassword && !newRecoveryPin) {
-                    setSecurityError('Veuillez saisir un nouveau mot de passe ou un nouveau code PIN de récupération.');
+                  if (newAdminPassword.length < 6) {
+                    setSecurityError('Le nouveau mot de passe doit comporter au moins 6 caractères.');
                     return;
                   }
-
-                  if (newAdminPassword) {
-                    if (newAdminPassword.length < 6) {
-                      setSecurityError('Le nouveau mot de passe doit comporter au moins 6 caractères.');
-                      return;
-                    }
-                    if (newAdminPassword !== confirmAdminPassword) {
-                      setSecurityError('Les deux nouveaux mots de passe ne correspondent pas.');
-                      return;
-                    }
-                  }
-
-                  if (newRecoveryPin && newRecoveryPin.length < 4) {
-                    setSecurityError('Le code PIN de récupération doit comporter au moins 4 à 6 chiffres.');
+                  if (newAdminPassword !== confirmAdminPassword) {
+                    setSecurityError('Les deux nouveaux mots de passe ne correspondent pas.');
                     return;
                   }
 
@@ -1931,79 +1915,34 @@ export const AdminPanel: React.FC = () => {
                   setSecurityMessage(null);
 
                   try {
-                    // Fetch existing security config from Firestore or localStorage
-                    let currentConfig: AdminSecurityConfig | null = null;
-                    try {
-                      const docSnap = await getDoc(doc(db, 'settings', 'admin_auth'));
-                      if (docSnap.exists()) {
-                        currentConfig = docSnap.data() as AdminSecurityConfig;
-                      }
-                    } catch (err) {
-                      console.warn('Firestore fetch notice:', err);
-                    }
-
-                    if (!currentConfig) {
-                      const saved = localStorage.getItem(ADMIN_SECURITY_STORAGE_KEY);
-                      if (saved) currentConfig = JSON.parse(saved);
-                    }
-
-                    // Verify current password against stored hash if available
-                    if (currentConfig?.passwordHash) {
-                      const isCurrentValid = await verifySecret(currentAdminPassword, currentConfig.passwordHash);
-                      if (!isCurrentValid) {
-                        setSecurityError('Le mot de passe actuel saisi est incorrect.');
-                        setIsUpdatingPassword(false);
-                        return;
-                      }
-                    }
-
-                    // Prepare updated hash values
-                    const updatedPasswordHash = newAdminPassword 
-                      ? await hashSecret(newAdminPassword) 
-                      : (currentConfig?.passwordHash || await hashSecret(currentAdminPassword));
-
-                    const updatedPinHash = newRecoveryPin 
-                      ? await hashSecret(newRecoveryPin) 
-                      : (currentConfig?.recoveryPinHash || await hashSecret('842732'));
-
-                    const updatedConfig: AdminSecurityConfig = {
-                      email: settingsForm.email || 'mutangilwaivan@gmail.com',
-                      passwordHash: updatedPasswordHash,
-                      recoveryPinHash: updatedPinHash,
-                      updatedAt: new Date().toISOString(),
-                      isInitialized: true,
-                    };
-
-                    // Save to Firestore
-                    try {
-                      await setDoc(doc(db, 'settings', 'admin_auth'), updatedConfig);
-                    } catch (err) {
-                      console.warn('Firestore setDoc notice:', err);
-                    }
-
-                    // Save to localStorage
-                    localStorage.setItem(ADMIN_SECURITY_STORAGE_KEY, JSON.stringify(updatedConfig));
-
-                    // Update Firebase Auth password if logged in
                     const user = auth.currentUser;
-                    if (user && user.email && newAdminPassword) {
-                      try {
-                        const credential = EmailAuthProvider.credential(user.email, currentAdminPassword);
-                        await reauthenticateWithCredential(user, credential);
-                        await updatePassword(user, newAdminPassword);
-                      } catch (fbErr) {
-                        console.warn('Firebase Auth update notice:', fbErr);
-                      }
+                    if (!user || !user.email) {
+                      setSecurityError('Session expirée. Veuillez vous reconnecter.');
+                      setIsUpdatingPassword(false);
+                      return;
                     }
 
-                    setSecurityMessage('✅ Vos identifiants de sécurité ont été mis à jour avec succès !');
+                    // Re-authenticate user before password change (Firebase requirement)
+                    const credential = EmailAuthProvider.credential(user.email, currentAdminPassword);
+                    await reauthenticateWithCredential(user, credential);
+
+                    // Update password in Firebase Auth
+                    await updatePassword(user, newAdminPassword);
+
+                    setSecurityMessage('✅ Votre mot de passe Firebase a été mis à jour avec succès !');
                     setCurrentAdminPassword('');
                     setNewAdminPassword('');
                     setConfirmAdminPassword('');
-                    setNewRecoveryPin('');
                     setTimeout(() => setSecurityMessage(null), 5000);
                   } catch (err: any) {
-                    setSecurityError(`Erreur lors de la mise à jour : ${err?.message || 'Vérifiez votre connexion internet.'}`);
+                    const code = err?.code || '';
+                    if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+                      setSecurityError('Le mot de passe actuel saisi est incorrect.');
+                    } else if (code === 'auth/weak-password') {
+                      setSecurityError('Le nouveau mot de passe est trop faible (min. 6 caractères).');
+                    } else {
+                      setSecurityError(`Erreur : ${err?.message || 'Vérifiez votre connexion internet.'}`);
+                    }
                   } finally {
                     setIsUpdatingPassword(false);
                   }
@@ -2027,67 +1966,73 @@ export const AdminPanel: React.FC = () => {
                   />
                 </div>
 
-                <div className="pt-2 border-t border-[#F2ECE4]">
+                <div>
                   <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                    Nouveau Mot de Passe (Optionnel)
+                    Nouveau Mot de Passe
                   </label>
                   <input
                     type="password"
+                    required
                     value={newAdminPassword}
                     onChange={(e) => {
                       setNewAdminPassword(e.target.value);
                       setSecurityError(null);
                     }}
-                    placeholder="Laisser vide si inchangé (Min. 6 caractères)"
+                    placeholder="Min. 6 caractères"
                     className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2 text-xs text-[#1E1B18]"
                   />
                 </div>
 
-                {newAdminPassword.length > 0 && (
-                  <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                      Confirmer le Nouveau Mot de Passe
-                    </label>
-                    <input
-                      type="password"
-                      value={confirmAdminPassword}
-                      onChange={(e) => {
-                        setConfirmAdminPassword(e.target.value);
-                        setSecurityError(null);
-                      }}
-                      placeholder="Retapez votre nouveau mot de passe"
-                      className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2 text-xs text-[#1E1B18]"
-                    />
-                  </div>
-                )}
-
-                <div className="pt-2 border-t border-[#F2ECE4]">
+                <div>
                   <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                    Nouveau Code PIN de Récupération (6 chiffres - Optionnel)
+                    Confirmer le Nouveau Mot de Passe
                   </label>
                   <input
                     type="password"
-                    maxLength={6}
-                    value={newRecoveryPin}
+                    required
+                    value={confirmAdminPassword}
                     onChange={(e) => {
-                      setNewRecoveryPin(e.target.value.replace(/\D/g, ''));
+                      setConfirmAdminPassword(e.target.value);
                       setSecurityError(null);
                     }}
-                    placeholder="Laisser vide si inchangé (ex: 842732)"
+                    placeholder="Retapez votre nouveau mot de passe"
                     className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2 text-xs text-[#1E1B18]"
                   />
-                  <p className="text-[10px] text-[#8C7A6B] mt-1">
-                    Utilisé pour réinitialiser immédiatement votre mot de passe en cas d'oubli sans dépendre d'un email.
-                  </p>
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-2 flex flex-wrap gap-3">
                   <button
                     type="submit"
-                    disabled={isUpdatingPassword || !currentAdminPassword}
+                    disabled={isUpdatingPassword}
                     className="px-6 py-2.5 bg-[#181512] hover:bg-[#2C2723] text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm cursor-pointer disabled:opacity-50"
                   >
-                    {isUpdatingPassword ? 'Mise à jour sécurisée...' : 'Enregistrer la Sécurité'}
+                    {isUpdatingPassword ? 'Mise à jour...' : 'Mettre à jour le mot de passe'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const user = auth.currentUser;
+                      const email = user?.email || settings.email;
+                      if (!email) {
+                        setSecurityError('Aucune adresse email trouvée.');
+                        return;
+                      }
+                      try {
+                        const actionCodeSettings = {
+                          url: window.location.origin + '/#admin',
+                          handleCodeInApp: false,
+                        };
+                        await sendPasswordResetEmail(auth, email, actionCodeSettings);
+                        setSecurityMessage(`📧 Un email de réinitialisation a été envoyé à ${email}. Vérifiez vos emails (y compris spam).`);
+                        setTimeout(() => setSecurityMessage(null), 8000);
+                      } catch (err: any) {
+                        setSecurityError(`Erreur d'envoi : ${err?.message || 'Réessayez.'}`);
+                      }
+                    }}
+                    className="px-5 py-2.5 bg-[#FAF8F5] hover:bg-[#F0EAE1] text-[#5C5247] border border-[#E0D7CC] rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer"
+                  >
+                    Recevoir un lien par email
                   </button>
                 </div>
               </form>
