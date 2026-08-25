@@ -16,7 +16,9 @@ import {
   Send,
   MessageSquare,
   CheckCircle2,
-  FileText
+  FileText,
+  Eye,
+  Camera
 } from 'lucide-react';
 import { generateWhatsAppLink, buildCreationOrderMessage } from '../data/initialData';
 import { ShareModal } from './ShareModal';
@@ -26,11 +28,11 @@ interface ImmersiveProductSheetProps {
   onClose?: () => void;
 }
 
-const ANGLE_LABELS = [
-  'Vue de Face • Allure & Tombé',
-  'Vue de Profil • Lignes & Galbe',
-  'Vue de Dos • Traîne & Finitions',
-  'Gros Plan • Étoffes & Points Main'
+const ANGLE_DATA = [
+  { short: 'Face', title: 'Vue de Face', subtitle: 'Allure & Tombé' },
+  { short: 'Profil', title: 'Vue de Profil', subtitle: 'Lignes & Galbe' },
+  { short: 'Dos', title: 'Vue de Dos', subtitle: 'Traîne & Finitions' },
+  { short: 'Détail', title: 'Zoom Étoffe', subtitle: 'Points & Matière' },
 ];
 
 export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
@@ -48,6 +50,10 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [activeRightTab, setActiveRightTab] = useState<'details' | 'comments'>('details');
 
+  // Touch Swipe Gesture State
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+
   // New Comment Form State
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [commentName, setCommentName] = useState('');
@@ -61,7 +67,12 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
     ? creation.images 
     : ['/images/vanessa-hero.jpg'];
 
-  const currentAngle = ANGLE_LABELS[currentImageIndex] || `Vue d'Atelier ${currentImageIndex + 1}`;
+  const currentAngleInfo = ANGLE_DATA[currentImageIndex] || {
+    short: `Vue ${currentImageIndex + 1}`,
+    title: `Vue d'Atelier ${currentImageIndex + 1}`,
+    subtitle: 'Création Van\'s'
+  };
+
   const isLiked = likedCreationIds.includes(creation.id);
   const commentsList = creation.comments || [];
 
@@ -79,6 +90,31 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [images.length, onClose]);
+
+  // Touch swipe handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchEndX(null);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    const minSwipeDistance = 40;
+    if (distance > minSwipeDistance) {
+      // Swiped Left -> Next Angle
+      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    } else if (distance < -minSwipeDistance) {
+      // Swiped Right -> Previous Angle
+      setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,97 +206,136 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* LEFT: PHOTOGRAPHIC GALLERY (Fluid compact height on mobile, full on PC)  */}
+      {/* LEFT: GALLERY + EXPLICIT 4-VIEWS STRIP                                    */}
       {/* ========================================================================= */}
-      <div className="lg:w-[50%] relative bg-[#181512] flex flex-col justify-between overflow-hidden h-72 sm:h-96 lg:h-full shrink-0">
+      <div className="lg:w-[50%] relative bg-[#181512] flex flex-col justify-between overflow-hidden shrink-0">
         
-        {/* Main Photograph */}
-        <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+        {/* Main Photograph with Touch Swipe Support */}
+        <div 
+          className="relative w-full h-80 sm:h-96 lg:h-full flex items-center justify-center overflow-hidden touch-pan-y cursor-grab active:cursor-grabbing select-none"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <img
             src={images[currentImageIndex]}
-            alt={`${creation.title} - ${currentAngle}`}
-            className="w-full h-full object-cover object-top transition-opacity duration-300 filter contrast-[1.04]"
+            alt={`${creation.title} - ${currentAngleInfo.title}`}
+            className="w-full h-full object-cover object-top transition-all duration-300 filter contrast-[1.04]"
           />
 
           {/* Subtle vignette */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
-        </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 pointer-events-none" />
 
-        {/* Desktop Top Badges & Actions */}
-        <div className="hidden lg:flex absolute top-4 left-4 right-4 items-center justify-between z-10">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/60 backdrop-blur-md text-[#C5A880] text-[10px] font-bold tracking-widest uppercase border border-[#C5A880]/30 shadow-sm">
-            <Sparkles className="w-3 h-3 text-[#C5A880]" />
-            <span>{creation.categories[0] || 'Haute Couture'}</span>
+          {/* Floating Top Info Badges */}
+          <div className="absolute top-3 inset-x-3 flex items-center justify-between z-10 pointer-events-none">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/70 backdrop-blur-md text-[#C5A880] text-[9.5px] font-bold tracking-widest uppercase border border-[#C5A880]/40 shadow-sm pointer-events-auto">
+              <Sparkles className="w-3 h-3 text-[#C5A880]" />
+              <span>{creation.categories[0] || 'Haute Couture'}</span>
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/70 backdrop-blur-md text-white text-[9.5px] font-bold tracking-wider uppercase border border-white/20 shadow-sm pointer-events-auto">
+              <Camera className="w-3 h-3 text-[#C5A880]" />
+              <span>Vue {currentImageIndex + 1}/{images.length}</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Desktop Like Button */}
-            <button
-              type="button"
-              onClick={() => toggleLikeCreation(creation.id)}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full backdrop-blur-md transition-all cursor-pointer active:scale-90 shadow-sm ${
-                isLiked
-                  ? 'bg-[#6E2333]/90 text-rose-200 border border-rose-400/50'
-                  : 'bg-black/60 text-white hover:bg-black/80 border border-white/20'
-              }`}
-              title={isLiked ? 'Coup de cœur ajouté' : 'Ajouter aux coups de cœur'}
-              aria-label="Aimer cette création"
-            >
-              <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-400 text-rose-400' : 'text-white'}`} />
-              <span className="text-[11px] font-bold font-mono">{creation.likesCount || 0}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Gallery Navigation Arrows */}
-        {images.length > 1 && (
-          <div className="absolute inset-y-0 inset-x-2 flex items-center justify-between pointer-events-none z-10">
-            <button
-              onClick={() => setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)}
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm pointer-events-auto transition-colors cursor-pointer"
-              aria-label="Image précédente"
-            >
-              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-
-            <button
-              onClick={() => setCurrentImageIndex((prev) => (prev + 1) % images.length)}
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm pointer-events-auto transition-colors cursor-pointer"
-              aria-label="Image suivante"
-            >
-              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-          </div>
-        )}
-
-        {/* Bottom Thumbnail Strip & Angle Indicator */}
-        <div className="absolute bottom-2.5 inset-x-2 flex flex-col items-center gap-1.5 z-10">
-          <span className="text-[9.5px] sm:text-[10px] text-white/95 bg-black/70 px-2.5 py-0.5 rounded-full backdrop-blur-md font-medium tracking-wide">
-            {currentAngle}
-          </span>
-          
+          {/* Prominent Touch Navigation Arrows */}
           {images.length > 1 && (
-            <div className="flex items-center justify-center gap-1.5">
-              {images.map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentImageIndex(idx)}
-                  className={`w-8 h-10 sm:w-10 sm:h-12 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
-                    currentImageIndex === idx
-                      ? 'border-[#C5A880] scale-105 shadow-md'
-                      : 'border-white/30 opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  <img
-                    src={img}
-                    alt={`Vignette ${idx + 1}`}
-                    className="w-full h-full object-cover object-top"
-                  />
-                </button>
-              ))}
+            <div className="absolute inset-y-0 inset-x-2 flex items-center justify-between pointer-events-none z-10">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+                }}
+                className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-md pointer-events-auto transition-all cursor-pointer active:scale-90 border border-white/20 shadow-lg"
+                aria-label="Vue précédente"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex((prev) => (prev + 1) % images.length);
+                }}
+                className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-md pointer-events-auto transition-all cursor-pointer active:scale-90 border border-white/20 shadow-lg"
+                aria-label="Vue suivante"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           )}
+
+          {/* Angle Title & Swipe Hint Badge */}
+          <div className="absolute bottom-3 inset-x-3 flex flex-col items-center gap-1 z-10 pointer-events-none">
+            <span className="text-xs text-white font-bold bg-black/75 px-4 py-1 rounded-full backdrop-blur-md tracking-wider border border-white/20 shadow-md">
+              {currentAngleInfo.title} • {currentAngleInfo.subtitle}
+            </span>
+            <span className="text-[9px] text-[#C5A880] tracking-widest uppercase font-semibold">
+              Glissez le doigt ou cliquez sur les vues ci-dessous
+            </span>
+          </div>
         </div>
+
+        {/* ========================================================================= */}
+        {/* EXPLICIT 4-VIEWS STRIP (Always visible right under the photo)             */}
+        {/* ========================================================================= */}
+        <div className="p-3 bg-[#110E0C] border-t border-b border-[#2C241D] text-white">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[#C5A880]">
+              <Eye className="w-3.5 h-3.5" />
+              <span>Explorez les 4 Vues de l'Atelier</span>
+            </div>
+            <span className="text-[10px] font-mono text-stone-400">
+              {currentImageIndex + 1} sur {images.length}
+            </span>
+          </div>
+
+          {/* 4 Clickable Angle Cards with Large Previews */}
+          <div className="grid grid-cols-4 gap-2">
+            {images.map((img, idx) => {
+              const isSelected = currentImageIndex === idx;
+              const angle = ANGLE_DATA[idx] || {
+                short: `Vue ${idx + 1}`,
+                title: `Vue ${idx + 1}`,
+                subtitle: ''
+              };
+
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setCurrentImageIndex(idx)}
+                  className={`flex flex-col items-center p-1 sm:p-1.5 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                    isSelected
+                      ? 'bg-[#C5A880]/25 border-[#C5A880] shadow-[0_0_12px_rgba(197,168,128,0.35)] scale-[1.03]'
+                      : 'bg-black/50 border-white/15 opacity-70 hover:opacity-100 hover:border-white/40'
+                  }`}
+                  title={angle.title}
+                >
+                  <div className="w-full aspect-[3/4] rounded-lg overflow-hidden mb-1 relative bg-black">
+                    <img
+                      src={img}
+                      alt={angle.title}
+                      className="w-full h-full object-cover object-top"
+                    />
+                    {isSelected && (
+                      <div className="absolute inset-0 border-2 border-[#C5A880] rounded-lg pointer-events-none" />
+                    )}
+                  </div>
+                  <span className={`text-[9.5px] sm:text-[10.5px] font-bold tracking-tight truncate w-full text-center ${
+                    isSelected ? 'text-[#C5A880]' : 'text-stone-300'
+                  }`}>
+                    {angle.short}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
       </div>
 
       {/* ========================================================================= */}
