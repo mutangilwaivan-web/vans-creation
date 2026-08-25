@@ -12,7 +12,8 @@ import {
   Share2, 
   Heart, 
   MessageSquare,
-  ShieldCheck
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { 
   generateWhatsAppLink, 
@@ -20,6 +21,320 @@ import {
   buildWishlistShareMessage 
 } from '../data/initialData';
 import { ShareModal } from './ShareModal';
+
+const CARD_ANGLE_LABELS = ['Vue de Face', 'Vue de Profil', 'Vue de Dos', 'Détail Étoffe'];
+
+interface CreationCardProps {
+  creation: Creation;
+  isLiked: boolean;
+  onToggleLike: (id: string) => void;
+  onSelectDetail: (creation: Creation) => void;
+  onShare: (creation: Creation) => void;
+  whatsappNumber: string;
+  studioName: string;
+}
+
+const CreationCard: React.FC<CreationCardProps> = ({
+  creation,
+  isLiked,
+  onToggleLike,
+  onSelectDetail,
+  onShare,
+  whatsappNumber,
+  studioName,
+}) => {
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+
+  const images = creation.images && creation.images.length > 0
+    ? creation.images
+    : ['/images/vanessa-hero.jpg'];
+
+  const currentDisplayImage = images[activeImageIndex] || images[0];
+  const angleLabel = CARD_ANGLE_LABELS[activeImageIndex] || `Vue ${activeImageIndex + 1}`;
+
+  // Touch Swipe Gesture Handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchEndX(null);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    const minSwipeDistance = 35;
+    if (distance > minSwipeDistance) {
+      // Swipe Left -> Next Image
+      setActiveImageIndex((prev) => (prev + 1) % images.length);
+    } else if (distance < -minSwipeDistance) {
+      // Swipe Right -> Previous Image
+      setActiveImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
+
+  const handlePrevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveImageIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const whatsappUrl = generateWhatsAppLink(
+    whatsappNumber,
+    buildCreationOrderMessage(studioName, creation.title, creation.priceEstimate, creation.silhouette)
+  );
+
+  return (
+    <div className="group bg-white rounded-[28px] overflow-hidden border border-[#EAE3DA]/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_45px_-10px_rgba(27,67,50,0.18)] hover:border-[#C5A880]/60 transition-all duration-500 flex flex-col justify-between select-none transform hover:-translate-y-1.5">
+      
+      {/* Image Container with 3:4 Editorial Ratio & Touch Swipe */}
+      <div 
+        onClick={() => onSelectDetail(creation)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="relative aspect-[3/4] overflow-hidden bg-[#181512] cursor-pointer touch-pan-y"
+      >
+        <img
+          src={currentDisplayImage}
+          alt={`${creation.title} - ${angleLabel}`}
+          className="w-full h-full object-cover object-top transition-all duration-500 ease-out group-hover:scale-105 filter contrast-[1.04]"
+        />
+
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/20 opacity-80 group-hover:opacity-60 transition-opacity duration-300 pointer-events-none" />
+
+        {/* Top Floating Action Badges */}
+        <div className="absolute top-3.5 inset-x-3.5 flex items-center justify-between z-10 pointer-events-none">
+          {/* Signature or Category Tag */}
+          {(creation.isFeatured || creation.misEnAvant) ? (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#181512]/85 backdrop-blur-md text-[#C5A880] text-[9px] font-bold tracking-[0.20em] uppercase border border-[#C5A880]/50 shadow-md pointer-events-auto">
+              <Sparkles className="w-3 h-3 text-[#C5A880]" />
+              <span>Signature</span>
+            </div>
+          ) : (
+            <div className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[9px] font-bold tracking-wider uppercase shadow-xs pointer-events-auto">
+              {creation.occasionName || creation.categories[0]}
+            </div>
+          )}
+
+          {/* Interactive Heart (Like) Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleLike(creation.id);
+            }}
+            className={`pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md transition-all duration-300 cursor-pointer shadow-md active:scale-90 ${
+              isLiked
+                ? 'bg-[#6E2333]/90 text-rose-200 border border-rose-400/50'
+                : 'bg-black/50 hover:bg-black/75 text-white/90 border border-white/20'
+            }`}
+            title={isLiked ? 'Retirer des coups de cœur' : 'Ajouter aux coups de cœur'}
+            aria-label="Aimer cette création"
+          >
+            <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-400 text-rose-400' : 'text-white'}`} />
+            <span className="text-[11px] font-bold font-mono">{creation.likesCount || 0}</span>
+          </button>
+        </div>
+
+        {/* Direct Swipe Angle Switcher Arrows on the Card */}
+        {images.length > 1 && (
+          <div className="absolute inset-y-0 inset-x-2 flex items-center justify-between pointer-events-none z-10">
+            <button
+              type="button"
+              onClick={handlePrevImage}
+              className="w-8 h-8 rounded-full bg-black/50 hover:bg-black/85 text-white flex items-center justify-center backdrop-blur-sm pointer-events-auto transition-all cursor-pointer active:scale-90 border border-white/20 shadow-md sm:opacity-0 sm:group-hover:opacity-100"
+              title="Vue précédente"
+              aria-label="Vue précédente"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleNextImage}
+              className="w-8 h-8 rounded-full bg-black/50 hover:bg-black/85 text-white flex items-center justify-center backdrop-blur-sm pointer-events-auto transition-all cursor-pointer active:scale-90 border border-white/20 shadow-md sm:opacity-0 sm:group-hover:opacity-100"
+              title="Vue suivante"
+              aria-label="Vue suivante"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Bottom Angle Name & Dots Indicator */}
+        <div className="absolute bottom-3 inset-x-3 flex flex-col items-center gap-1.5 z-10 pointer-events-none">
+          <span className="text-[9.5px] font-bold text-white/95 bg-black/75 px-3 py-0.5 rounded-full backdrop-blur-md tracking-wider border border-white/15">
+            {angleLabel}
+          </span>
+
+          {/* Dots Pagination */}
+          {images.length > 1 && (
+            <div className="flex items-center gap-1.5 pointer-events-auto">
+              {images.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveImageIndex(idx);
+                  }}
+                  className={`transition-all rounded-full cursor-pointer ${
+                    activeImageIndex === idx
+                      ? 'w-4 h-1.5 bg-[#C5A880] shadow-sm'
+                      : 'w-1.5 h-1.5 bg-white/50 hover:bg-white'
+                  }`}
+                  aria-label={`Aller à la vue ${idx + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Card Editorial Info Body */}
+      <div className="p-5 sm:p-6 space-y-3.5">
+        <div className="space-y-1.5">
+          
+          {/* Haute Couture Line & Timeline */}
+          <div 
+            className="flex items-center justify-between text-[10px] uppercase tracking-[0.16em] font-bold text-[#8C7A6B]"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            <span className="text-[#1B4332] font-semibold">{creation.coutureLine || 'Haute Couture'}</span>
+            {creation.preparationTime && (
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3 text-[#C5A880]" />
+                {creation.preparationTime.split('(')[0].trim()}
+              </span>
+            )}
+          </div>
+
+          <h3 
+            onClick={() => onSelectDetail(creation)}
+            className="text-base sm:text-lg font-bold text-[#181512] group-hover:text-[#1B4332] transition-colors duration-300 cursor-pointer leading-snug"
+            style={{ fontFamily: "'Cinzel', serif" }}
+          >
+            {creation.title}
+          </h3>
+
+          <p 
+            className="text-[12px] text-[#5C5248] line-clamp-2 leading-relaxed"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            {creation.description}
+          </p>
+        </div>
+
+        {/* Fabrics preview */}
+        <div className="pt-0.5 flex flex-wrap gap-1.5">
+          {creation.fabrics.slice(0, 2).map((fabric, idx) => (
+            <span 
+              key={idx}
+              className="px-2.5 py-0.5 rounded-md bg-[#F4EFEA] text-[#6B5F54] text-[10.5px] font-medium"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              {fabric}
+            </span>
+          ))}
+        </div>
+
+        {/* Interactive Social Engagement Row (Like / Comment / Share) */}
+        <div className="pt-2 flex items-center justify-between border-t border-[#F2ECE4] text-xs">
+          {/* Like Action */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleLike(creation.id);
+            }}
+            className={`inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg transition-all cursor-pointer select-none active:scale-95 ${
+              isLiked
+                ? 'text-rose-700 bg-rose-50 font-bold'
+                : 'text-[#6A5E52] hover:text-[#181512] hover:bg-[#FAF8F5]'
+            }`}
+            title={isLiked ? 'Coup de cœur ajouté' : 'Ajouter aux coups de cœur'}
+          >
+            <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-600 text-rose-600' : 'text-[#8C7A6B]'}`} />
+            <span className="font-mono text-[11px]">{creation.likesCount || 0}</span>
+          </button>
+
+          {/* Comment Action */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectDetail(creation);
+            }}
+            className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-[#6A5E52] hover:text-[#181512] hover:bg-[#FAF8F5] transition-all cursor-pointer select-none"
+            title="Consulter et ajouter des avis"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-[#8C7A6B]" />
+            <span className="text-[11px] font-medium">
+              {(creation.comments && creation.comments.length > 0) ? `${creation.comments.length} avis` : 'Avis'}
+            </span>
+          </button>
+
+          {/* Share Action */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onShare(creation);
+            }}
+            className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-[#6A5E52] hover:text-[#181512] hover:bg-[#FAF8F5] transition-all cursor-pointer select-none"
+            title="Partager cette création"
+          >
+            <Share2 className="w-3.5 h-3.5 text-[#C5A880]" />
+            <span className="text-[11px] font-medium">Partager</span>
+          </button>
+        </div>
+
+        {/* Direct WhatsApp Ordering Bar with Haute Couture Guarantee */}
+        <div className="pt-2.5 border-t border-[#EAE3DA] flex items-center justify-between gap-2">
+          <div className="text-left">
+            <span 
+              className="text-[9px] uppercase tracking-wider text-[#8C7A6B] font-semibold block"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              Confection
+            </span>
+            <span 
+              className="font-bold text-xs sm:text-sm text-[#181512]"
+              style={{ fontFamily: "'Cinzel', serif" }}
+            >
+              Sur-Mesure
+            </span>
+          </div>
+
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-shimmer inline-flex items-center gap-1.5 px-4 py-2 sm:py-2.5 rounded-full bg-[#1B4332] hover:bg-[#143528] text-white text-[10.5px] sm:text-[11px] font-bold tracking-[0.14em] uppercase transition-all duration-300 shadow-sm hover:shadow-lg cursor-pointer border border-[#2D6A4F]/40 active:scale-[0.97]"
+            title="Commander cette pièce sur WhatsApp"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            <MessageCircle className="w-3.5 h-3.5 fill-current text-[#25D366]" />
+            <span>Commander</span>
+          </a>
+        </div>
+      </div>
+
+    </div>
+  );
+};
 
 export const CreationsSection: React.FC = () => {
   const { 
@@ -35,7 +350,6 @@ export const CreationsSection: React.FC = () => {
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
-  const [hoveredCreationId, setHoveredCreationId] = useState<string | null>(null);
   const [sharingCreation, setSharingCreation] = useState<Creation | null>(null);
 
   // Active filter ID
@@ -216,7 +530,7 @@ export const CreationsSection: React.FC = () => {
         )}
 
         {/* ========================================================================= */}
-        {/* EDITORIAL 3:4 CREATION GRID WITH 3D HOVER ELEVATION                      */}
+        {/* EDITORIAL 3:4 CREATION GRID WITH SWIPEABLE CARDS                         */}
         {/* ========================================================================= */}
         {filteredCreations.length === 0 ? (
           <div className="text-center py-16 sm:py-20 bg-white rounded-3xl border border-[#EAE3DA] p-8 max-w-lg mx-auto shadow-sm space-y-4">
@@ -261,215 +575,19 @@ export const CreationsSection: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7 sm:gap-8 lg:gap-10">
             {filteredCreations.map((creation) => {
-              const isHovered = hoveredCreationId === creation.id;
-              const mainImage = creation.images[0] || '/images/vanessa-hero.jpg';
-              const secondaryImage = creation.images[1] || mainImage;
-              const displayImage = isHovered && creation.images.length > 1 ? secondaryImage : mainImage;
-
-              const whatsappUrl = generateWhatsAppLink(
-                settings.whatsappNumber,
-                buildCreationOrderMessage(settings.studioName, creation.title, creation.priceEstimate, creation.silhouette)
-              );
-
               const isLiked = likedCreationIds.includes(creation.id);
 
               return (
-                <div
+                <CreationCard
                   key={creation.id}
-                  onMouseEnter={() => setHoveredCreationId(creation.id)}
-                  onMouseLeave={() => setHoveredCreationId(null)}
-                  className="group bg-white rounded-[28px] overflow-hidden border border-[#EAE3DA]/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_45px_-10px_rgba(27,67,50,0.18)] hover:border-[#C5A880]/60 transition-all duration-500 flex flex-col justify-between select-none transform hover:-translate-y-1.5"
-                >
-                  {/* Image Container with 3:4 Editorial Portrait Ratio */}
-                  <div 
-                    onClick={() => setSelectedCreationForDetail(creation)}
-                    className="relative aspect-[3/4] overflow-hidden bg-[#181512] cursor-pointer"
-                  >
-                    <img
-                      src={displayImage}
-                      alt={creation.title}
-                      className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105 filter contrast-[1.04]"
-                    />
-
-                    {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/10 opacity-70 group-hover:opacity-50 transition-opacity duration-300" />
-
-                    {/* Top Floating Action Badges */}
-                    <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10 pointer-events-none">
-                      {/* Signature or Category Tag */}
-                      {(creation.isFeatured || creation.misEnAvant) ? (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#181512]/85 backdrop-blur-md text-[#C5A880] text-[9px] font-bold tracking-[0.20em] uppercase border border-[#C5A880]/50 shadow-md pointer-events-auto">
-                          <Sparkles className="w-3 h-3 text-[#C5A880]" />
-                          <span>Signature</span>
-                        </div>
-                      ) : (
-                        <div className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[9px] font-bold tracking-wider uppercase shadow-xs pointer-events-auto">
-                          {creation.occasionName || creation.categories[0]}
-                        </div>
-                      )}
-
-                      {/* Interactive Heart (Like) Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleLikeCreation(creation.id);
-                        }}
-                        className={`pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md transition-all duration-300 cursor-pointer shadow-md active:scale-90 ${
-                          isLiked
-                            ? 'bg-[#6E2333]/90 text-rose-200 border border-rose-400/50'
-                            : 'bg-black/50 hover:bg-black/75 text-white/90 border border-white/20'
-                        }`}
-                        title={isLiked ? 'Retirer des coups de cœur' : 'Ajouter aux coups de cœur'}
-                        aria-label="Aimer cette création"
-                      >
-                        <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-400 text-rose-400' : 'text-white'}`} />
-                        <span className="text-[11px] font-bold font-mono">{creation.likesCount || 0}</span>
-                      </button>
-                    </div>
-
-                    {/* Quick View Button on Hover */}
-                    <div className="absolute inset-x-4 bottom-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                      <span 
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/95 backdrop-blur-md text-[#181512] text-[11px] font-bold tracking-[0.16em] uppercase shadow-xl hover:bg-[#1B4332] hover:text-white transition-all duration-300"
-                        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Découvrir les détails</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Card Editorial Info Body */}
-                  <div className="p-5 sm:p-6 space-y-3.5">
-                    <div className="space-y-1.5">
-                      
-                      {/* Haute Couture Line & Timeline */}
-                      <div 
-                        className="flex items-center justify-between text-[10px] uppercase tracking-[0.16em] font-bold text-[#8C7A6B]"
-                        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                      >
-                        <span className="text-[#1B4332] font-semibold">{creation.coutureLine || 'Haute Couture'}</span>
-                        {creation.preparationTime && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-[#C5A880]" />
-                            {creation.preparationTime.split('(')[0].trim()}
-                          </span>
-                        )}
-                      </div>
-
-                      <h3 
-                        onClick={() => setSelectedCreationForDetail(creation)}
-                        className="text-base sm:text-lg font-bold text-[#181512] group-hover:text-[#1B4332] transition-colors duration-300 cursor-pointer leading-snug"
-                        style={{ fontFamily: "'Cinzel', serif" }}
-                      >
-                        {creation.title}
-                      </h3>
-
-                      <p 
-                        className="text-[12px] text-[#5C5248] line-clamp-2 leading-relaxed"
-                        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                      >
-                        {creation.description}
-                      </p>
-                    </div>
-
-                    {/* Fabrics preview */}
-                    <div className="pt-0.5 flex flex-wrap gap-1.5">
-                      {creation.fabrics.slice(0, 2).map((fabric, idx) => (
-                        <span 
-                          key={idx}
-                          className="px-2.5 py-0.5 rounded-md bg-[#F4EFEA] text-[#6B5F54] text-[10.5px] font-medium"
-                          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                        >
-                          {fabric}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Interactive Social Engagement Row (Like / Comment / Share) */}
-                    <div className="pt-2 flex items-center justify-between border-t border-[#F2ECE4] text-xs">
-                      {/* Like Action */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleLikeCreation(creation.id);
-                        }}
-                        className={`inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg transition-all cursor-pointer select-none active:scale-95 ${
-                          isLiked
-                            ? 'text-rose-700 bg-rose-50 font-bold'
-                            : 'text-[#6A5E52] hover:text-[#181512] hover:bg-[#FAF8F5]'
-                        }`}
-                        title={isLiked ? 'Coup de cœur ajouté' : 'Ajouter aux coups de cœur'}
-                      >
-                        <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-600 text-rose-600' : 'text-[#8C7A6B]'}`} />
-                        <span className="font-mono text-[11px]">{creation.likesCount || 0}</span>
-                      </button>
-
-                      {/* Comment Action */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedCreationForDetail(creation);
-                        }}
-                        className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-[#6A5E52] hover:text-[#181512] hover:bg-[#FAF8F5] transition-all cursor-pointer select-none"
-                        title="Consulter et ajouter des avis"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5 text-[#8C7A6B]" />
-                        <span className="text-[11px] font-medium">
-                          {(creation.comments && creation.comments.length > 0) ? `${creation.comments.length} avis` : 'Avis'}
-                        </span>
-                      </button>
-
-                      {/* Share Action */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSharingCreation(creation);
-                        }}
-                        className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-[#6A5E52] hover:text-[#181512] hover:bg-[#FAF8F5] transition-all cursor-pointer select-none"
-                        title="Partager cette création"
-                      >
-                        <Share2 className="w-3.5 h-3.5 text-[#C5A880]" />
-                        <span className="text-[11px] font-medium">Partager</span>
-                      </button>
-                    </div>
-
-                    {/* Direct WhatsApp Ordering Bar with Haute Couture Guarantee */}
-                    <div className="pt-2.5 border-t border-[#EAE3DA] flex items-center justify-between gap-2">
-                      <div className="text-left">
-                        <span 
-                          className="text-[9px] uppercase tracking-wider text-[#8C7A6B] font-semibold block"
-                          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                        >
-                          Confection
-                        </span>
-                        <span 
-                          className="font-bold text-xs sm:text-sm text-[#181512]"
-                          style={{ fontFamily: "'Cinzel', serif" }}
-                        >
-                          Sur-Mesure
-                        </span>
-                      </div>
-
-                      <a
-                        href={whatsappUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-shimmer inline-flex items-center gap-1.5 px-4 py-2 sm:py-2.5 rounded-full bg-[#1B4332] hover:bg-[#143528] text-white text-[10.5px] sm:text-[11px] font-bold tracking-[0.14em] uppercase transition-all duration-300 shadow-sm hover:shadow-lg cursor-pointer border border-[#2D6A4F]/40 active:scale-[0.97]"
-                        title="Commander cette pièce sur WhatsApp"
-                        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                      >
-                        <MessageCircle className="w-3.5 h-3.5 fill-current text-[#25D366]" />
-                        <span>Commander</span>
-                      </a>
-                    </div>
-                  </div>
-
-                </div>
+                  creation={creation}
+                  isLiked={isLiked}
+                  onToggleLike={toggleLikeCreation}
+                  onSelectDetail={setSelectedCreationForDetail}
+                  onShare={(c) => setSharingCreation(c)}
+                  whatsappNumber={settings.whatsappNumber}
+                  studioName={settings.studioName}
+                />
               );
             })}
           </div>
