@@ -293,18 +293,18 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
         {/* ========================================================================= */}
         {/* BOTTOM ACTION BAR: 1 SINGLE ROYAL CTA + NATIVE SHARE                     */}
         {/* ========================================================================= */}
-        <div className="pt-6 mt-6 border-t border-[#EAE3DA] space-y-3">
+        <div className="pt-6 mt-6 border-t border-[#EAE3DA] space-y-3.5">
           
           {/* Main WhatsApp Direct Button */}
           <a
             href={directWaUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-3 bg-[#1B4332] hover:bg-[#143528] text-white py-4 rounded-2xl text-xs sm:text-sm font-bold tracking-[0.14em] uppercase transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5 cursor-pointer border border-[#C5A880]/50 active:scale-[0.98]"
+            className="btn-shimmer w-full flex items-center justify-center gap-3 bg-[#1B4332] hover:bg-[#143528] text-white py-4 rounded-2xl text-xs sm:text-sm font-bold tracking-[0.16em] uppercase transition-all duration-300 shadow-md hover:shadow-2xl transform hover:-translate-y-0.5 cursor-pointer border border-[#C5A880]/60 active:scale-[0.98]"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
             <MessageCircle className="w-4 h-4 fill-current text-[#25D366]" />
-            <span>Commander cette création sur WhatsApp</span>
+            <span>Commander cette pièce sur WhatsApp</span>
           </a>
 
           {/* Sub-actions: Share & Atelier Guarantee */}
@@ -312,17 +312,17 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
             className="flex items-center justify-between text-xs text-[#7A7065] px-1"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#2D6A4F]" />
-              <span className="text-[11px]">Patronage sur-mesure exclusif</span>
+            <div className="flex items-center gap-1.5 text-[#2D6A4F] font-medium">
+              <ShieldCheck className="w-4 h-4 text-[#C5A880]" />
+              <span className="text-[11.5px]">Patronage architectural sur-mesure</span>
             </div>
 
             <button
               onClick={() => setIsShareModalOpen(true)}
-              className="inline-flex items-center gap-1.5 text-xs text-[#181512] hover:text-[#1B4332] font-semibold transition-colors cursor-pointer py-1.5 px-3 rounded-lg hover:bg-white border border-[#E8E1D7] shadow-xs active:scale-95"
+              className="inline-flex items-center gap-1.5 text-xs text-[#181512] hover:text-[#1B4332] font-bold transition-all cursor-pointer py-2 px-3.5 rounded-xl bg-white hover:bg-[#FAF8F5] border border-[#E0D7CC] shadow-xs active:scale-95"
             >
               <Share2 className="w-3.5 h-3.5 text-[#C5A880]" />
-              <span>Partager la robe</span>
+              <span>Partager la création</span>
             </button>
           </div>
 

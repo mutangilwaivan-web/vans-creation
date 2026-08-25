@@ -518,23 +518,23 @@ export function buildCreationOrderMessage(
 ): string {
   if (typeof creationOrStudio === 'object') {
     const creation = creationOrStudio;
-    const studioName = studioOrTitle || "Van's Creation";
-    return `Bonjour ${studioName} ✨
-Je suis vivement intéressée par votre création :
-👗 *${creation.title}*
-Ref : ${creation.slug || creation.id}
+    const studioName = studioOrTitle || "Maison Van's";
+    return `Bonjour ${studioName},
+Je souhaite échanger avec vous au sujet de votre création :
+*${creation.title}*
+Référence : ${creation.slug || creation.id}
 Occasion : ${creation.occasionName || (creation.categories && creation.categories[0]) || 'Haute Couture'}
 Silhouette : ${creation.silhouette || 'Sur-mesure'}
 
-J’aimerais en savoir plus sur les disponibilités, les délais de confection sur-mesure et convenir d’un premier échange / essayage.
+J’aimerais connaître les modalités de confection sur-mesure, les délais et convenir d'un rendez-vous d'essayage privé à l'atelier.
 
-Merci beaucoup !`;
+Merci d'avance.`;
   } else {
     const studioName = creationOrStudio;
     const title = studioOrTitle || 'Création Sur-Mesure';
     const sil = silhouette ? `\nSilhouette : ${silhouette}` : '';
     const price = priceEstimate ? `\nEstimation : ${priceEstimate}` : '';
-    return `Bonjour ${studioName} ✨\nJe suis vivement intéressée par votre création « *${title}* »${sil}${price}.\n\nJ'aimerais échanger sur la confection sur-mesure et convenir d'un rendez-vous d'essayage. Merci !`;
+    return `Bonjour ${studioName},\nJe suis vivement intéressée par votre création « *${title}* »${sil}${price}.\n\nJ'aimerais échanger sur la confection sur-mesure et convenir d'un rendez-vous d'essayage. Merci.`;
   }
 }
 
@@ -543,47 +543,49 @@ export function buildInspirationOrderMessage(inspiration: Inspiration, studioNam
     ? "votre création originale" 
     : "l’inspiration de style";
 
-  return `Bonjour ${studioName} ✨
-J’ai eu un vrai coup de cœur pour ${originTag} sur votre Atelier Digital :
-💡 *${inspiration.title}* (${inspiration.category})
-Occasion visée : ${inspiration.occasion}
+  return `Bonjour ${studioName},
+J’ai particulièrement apprécié ${originTag} présentée sur votre Atelier Digital :
+*${inspiration.title}* (${inspiration.category})
+Occasion : ${inspiration.occasion}
 
-Est-il possible de concevoir une pièce similaire adaptée à ma morphologie et à mes mensurations ?
+Serait-il possible de concevoir une pièce sur-mesure adaptée à ma morphologie et à mes mensurations ?
 
-J’aimerais échanger avec vous sur les choix de tissus et obtenir une estimation. Merci !`;
+J’aimerais échanger avec vous sur les étoffes et convenir d'une consultation. Merci.`;
 }
 
 export function buildCreationShareMessage(creation: Creation, studioName: string, shareUrl: string, phone: string): string {
   const fabricsText = creation.fabrics && creation.fabrics.length > 0 ? creation.fabrics.join(', ') : 'Étoffes nobles';
-  const videoMention = creation.videoUrl ? "\n🎬 *Défilé & Vidéo de la robe disponible sur la fiche !*" : "";
-  return `✨ *${creation.title.toUpperCase()}* ✨
-Haute Couture & Modélisme Sur-Mesure | ${studioName} (Vanessa Kaniki - Kinshasa)
+  const videoMention = creation.videoUrl ? "\nVidéo du défilé disponible sur la fiche officielle." : "";
+  return `${creation.title.toUpperCase()}
+Maison Van's • Haute Couture & Patronage Sur-Mesure
+Direction de création : Vanessa Kaniki (Kinshasa)
 
-👗 *Caractéristiques du Modèle :*
-• Occasion : ${creation.occasionName}
-• Silhouette : ${creation.silhouette}
-• Étoffes & Matières : ${fabricsText}
-• Confection : 100% Sur-Mesure, adaptée à votre morphologie${videoMention}
+Caractéristiques du modèle :
+- Occasion : ${creation.occasionName}
+- Silhouette : ${creation.silhouette}
+- Étoffes : ${fabricsText}
+- Confection : 100% sur-mesure${videoMention}
 
-💫 Découvrez la fiche interactive à 360°, la vidéo et tout le catalogue :
-👉 ${shareUrl}
+Consulter la fiche détaillée et le catalogue :
+${shareUrl}
 
-📞 Commande directe & essayage sur WhatsApp : +243 842 732 367`;
+Consultation et essayage privé : ${phone || '+243 842 732 367'}`;
 }
 
 export function buildInspirationShareMessage(inspiration: Inspiration, studioName: string, shareUrl: string): string {
-  return `💡 *${inspiration.title}* — Carnet d'Inspirations | ${studioName}
+  return `${inspiration.title.toUpperCase()} — Carnet d'Inspirations | ${studioName}
 Catégorie : ${inspiration.category} • Occasion : ${inspiration.occasion}
 
-Envie d'une réinterprétation sur-mesure de ce modèle ?
-👉 Découvrez l'Atelier Digital et le catalogue complet : ${shareUrl}`;
+Création et réinterprétation sur-mesure par l'Atelier Vanessa Kaniki.
+Découvrir la fiche du modèle et le catalogue :
+${shareUrl}`;
 }
 
 export function buildGeneralContactMessage(studioName: string, clientName?: string, eventType?: string, eventDate?: string): string {
-  let msg = `Bonjour ${studioName} ✨\nJe souhaite échanger avec vous pour un projet de création sur-mesure.`;
-  if (clientName) msg += `\nMon nom : ${clientName}`;
+  let msg = `Bonjour ${studioName},\nJe souhaite échanger avec vous pour un projet de création sur-mesure.`;
+  if (clientName) msg += `\nNom : ${clientName}`;
   if (eventType) msg += `\nÉvénement : ${eventType}`;
   if (eventDate) msg += `\nDate prévue : ${eventDate}`;
-  msg += `\nPouvons-nous convenir d'un rendez-vous ou d'un premier échange ? Merci !`;
+  msg += `\nPouvons-nous convenir d'un rendez-vous ou d'un premier échange ? Merci.`;
   return msg;
 }

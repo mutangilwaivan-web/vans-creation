@@ -77,25 +77,25 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   // Dedicated Short WhatsApp Status caption with direct link to product sheet
   const statusCaption = isCreation && creation
-    ? `✨ ${creation.title.toUpperCase()} ✨${videoUrl && mediaMode === 'video' ? ' (🎬 Vidéo Défilé)' : ''}
-👗 Confection 100% Sur-Mesure Maison Van's (${creation.silhouette})
-💎 Étoffes : ${creation.fabrics?.slice(0, 3).join(', ') || 'Soie & Dentelle d\'exception'}
+    ? `${creation.title.toUpperCase()}${videoUrl && mediaMode === 'video' ? ' (Vidéo du Défilé)' : ''}
+Confection sur-mesure Maison Van's (${creation.silhouette})
+Étoffes : ${creation.fabrics?.slice(0, 3).join(', ') || 'Soie & Dentelle d\'exception'}
 
-👉 Fiche produit interactive, photos & détails complets :
+Fiche produit interactive, photographies et détails :
 ${shareUrl}
 
-📞 Consultation & Commande WhatsApp : ${settings.whatsappNumber}`
-    : `✨ ${inspiration?.title} ✨
-Inspiration & confection haute couture sur-mesure.
-👉 Découvrez la fiche interactive du modèle :
+Consultation et commande atelier : ${settings.whatsappNumber}`
+    : `${inspiration?.title.toUpperCase()}
+Inspiration et confection haute couture sur-mesure.
+Découvrir la fiche officielle du modèle :
 ${shareUrl}
 
-📞 Atelier Van's Kinshasa : ${settings.whatsappNumber}`;
+Atelier Maison Van's Kinshasa : ${settings.whatsappNumber}`;
 
   // Social caption for Instagram / TikTok
   const instagramCaption = isCreation && creation
-    ? `✨ ${creation.title.toUpperCase()} ✨\nConfection sur-mesure & patronage architectural par ${settings.designerName} (${settings.studioName} - Kinshasa).\n\n👗 Silhouette : ${creation.silhouette}\n💎 Étoffes : ${creation.fabrics?.join(', ') || 'Matières nobles'}\n${videoUrl ? '🎬 Défilé vidéo disponible sur la fiche !\n' : ''}\n👉 Découvrez la fiche interactive à 360° et le catalogue complet : ${shareUrl}\n\n#VansCreation #VanessaKaniki #HauteCoutureKinshasa #SurMesure #RobeDeMariéeKinshasa #ModeCongolaise #KinshasaFashion`
-    : `✨ ${inspiration?.title} ✨\nInspiration & création d'art par ${settings.studioName} (${inspiration?.category}).\n\n👉 Explorez l'Atelier Digital : ${shareUrl}\n\n#VansCreation #KinshasaFashion #HauteCouture #SurMesure`;
+    ? `${creation.title.toUpperCase()}\nConfection sur-mesure et modélisme architectural par ${settings.designerName} (${settings.studioName} - Kinshasa).\n\nSilhouette : ${creation.silhouette}\nÉtoffes : ${creation.fabrics?.join(', ') || 'Matières nobles'}\n${videoUrl ? 'Vidéo du défilé disponible sur la fiche officielle.\n' : ''}\nDécouvrez la fiche détaillée à 360° et le catalogue complet : ${shareUrl}\n\n#VansCreation #VanessaKaniki #HauteCoutureKinshasa #SurMesure #RobeDeMariéeKinshasa #ModeCongolaise #KinshasaFashion`
+    : `${inspiration?.title.toUpperCase()}\nInspiration et création d'art par ${settings.studioName} (${inspiration?.category}).\n\nExplorez l'Atelier Digital : ${shareUrl}\n\n#VansCreation #KinshasaFashion #HauteCouture #SurMesure`;
 
   // WhatsApp Share URL (Opens WhatsApp with preloaded text containing direct link)
   const whatsappShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(statusCaption)}`;
@@ -107,7 +107,7 @@ ${shareUrl}
   const pinterestShareUrl = `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(shareUrl)}&media=${encodeURIComponent(previewImage)}&description=${encodeURIComponent(isCreation && creation ? `${creation.title} — Haute Couture Sur-Mesure Maison Van's Kinshasa` : 'Inspiration Maison Van\'s')}`;
 
   // Twitter / X Share URL
-  const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(isCreation && creation ? `✨ Découvrez "${creation.title}" — Création Sur-Mesure par Maison Van's Kinshasa.` : '✨ Inspiration Couture — Maison Van\'s Kinshasa')}&url=${encodeURIComponent(shareUrl)}&hashtags=HauteCouture,SurMesure,Kinshasa,VansCreation`;
+  const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(isCreation && creation ? `Découvrez « ${creation.title} » — Création Sur-Mesure par Maison Van's Kinshasa.` : 'Inspiration Couture — Maison Van\'s Kinshasa')}&url=${encodeURIComponent(shareUrl)}&hashtags=HauteCouture,SurMesure,Kinshasa,VansCreation`;
 
   // Download High-Resolution Image for WhatsApp Status / Story
   const handleDownloadImage = async () => {
@@ -543,8 +543,8 @@ ${shareUrl}
                   <Smartphone className="w-4 h-4 fill-current shrink-0 group-hover:scale-110 transition-transform" />
                   <span>
                     {isDownloading 
-                      ? 'Préparation de la photo & du lien...' 
-                      : '📱 Ouvrir dans WhatsApp & Statut (Photo + Lien)'}
+                      ? 'Préparation de la photo et du lien...' 
+                      : 'Ouvrir dans WhatsApp & Statut (Photo et Lien)'}
                   </span>
                 </button>
 
@@ -559,7 +559,7 @@ ${shareUrl}
                     <Download className="w-3.5 h-3.5 text-[#C5A880] group-hover:translate-y-0.5 transition-transform" />
                     <span>
                       {downloadSuccess 
-                        ? 'Vidéo téléchargée & Texte avec lien copié ! ✨' 
+                        ? 'Vidéo téléchargée et texte avec lien copié' 
                         : 'Télécharger la Vidéo HD du Défilé'}
                     </span>
                   </button>
@@ -573,7 +573,7 @@ ${shareUrl}
                     <Download className="w-3.5 h-3.5 text-[#C5A880] group-hover:translate-y-0.5 transition-transform" />
                     <span>
                       {downloadSuccess 
-                        ? 'Photo HD téléchargée & Texte avec lien copié ! ✨' 
+                        ? 'Photo HD téléchargée et texte avec lien copié' 
                         : 'Télécharger la Photo HD (Légende copiée)'}
                     </span>
                   </button>
