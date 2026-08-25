@@ -97,6 +97,8 @@ export const normalizeCreation = (id: string, data: any): Creation => {
       ? data.images 
       : (data.imageUrl || data.image ? [data.imageUrl || data.image] : ['https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=800&q=85']),
     priceEstimate: data.priceEstimate || data.prix || 'Sur devis',
+    coutureLine: data.coutureLine || data.ligne || 'Ligne Haute Couture Sur-Mesure',
+    fittingDetails: data.fittingDetails || data.essayages || '2 séances privées à l’Atelier de Kinshasa ou visioconférence Diaspora',
     preparationTime: data.preparationTime || data.delai || '3 à 5 semaines',
     isAvailable: data.isAvailable !== undefined ? Boolean(data.isAvailable) : true,
     availabilityBadge: data.availabilityBadge || (data.disponible ? 'Sur commande' : 'Sur commande'),

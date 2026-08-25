@@ -8,12 +8,17 @@ import {
   Eye, 
   Scissors, 
   Clock, 
-  RotateCcw,
-  Share2,
-  Heart,
-  MessageSquare
+  RotateCcw, 
+  Share2, 
+  Heart, 
+  MessageSquare,
+  ShieldCheck
 } from 'lucide-react';
-import { generateWhatsAppLink, buildCreationOrderMessage } from '../data/initialData';
+import { 
+  generateWhatsAppLink, 
+  buildCreationOrderMessage, 
+  buildWishlistShareMessage 
+} from '../data/initialData';
 import { ShareModal } from './ShareModal';
 
 export const CreationsSection: React.FC = () => {
@@ -33,28 +38,36 @@ export const CreationsSection: React.FC = () => {
   const [hoveredCreationId, setHoveredCreationId] = useState<string | null>(null);
   const [sharingCreation, setSharingCreation] = useState<Creation | null>(null);
 
-  // Curated Universes / Occasions for 1-click filter
+  // Active filter ID
+  const activeUniverseId = selectedOccasionFilter || 'all';
+
+  // Curated Universes / Occasions for 1-click filter (includes Wishlist)
   const universeFilters = useMemo(() => {
     return [
       { id: 'all', name: 'Toutes les Pièces' },
-      ...occasions.map(occ => ({ id: occ.id, name: occ.name }))
+      { 
+        id: 'favorites', 
+        name: `Coups de Cœur (${likedCreationIds.length})`,
+        isHeart: true 
+      },
+      ...occasions.map(occ => ({ id: occ.id, name: occ.name, isHeart: false }))
     ];
-  }, [occasions]);
-
-  // Active filter ID
-  const activeUniverseId = selectedOccasionFilter || 'all';
+  }, [occasions, likedCreationIds.length]);
 
   // Filtered Creations
   const filteredCreations = useMemo(() => {
     return creations.filter(c => {
-      // Filter by universe / occasion
-      if (activeUniverseId !== 'all') {
+      // 1. Wishlist Filter
+      if (activeUniverseId === 'favorites') {
+        if (!likedCreationIds.includes(c.id)) return false;
+      } else if (activeUniverseId !== 'all') {
+        // 2. Universe / Occasion filter
         const matchesOccasionId = c.occasionId === activeUniverseId;
         const matchesOccasionName = c.occasionName.toLowerCase() === activeUniverseId.toLowerCase();
         if (!matchesOccasionId && !matchesOccasionName) return false;
       }
 
-      // Filter by search
+      // 3. Search Filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchesTitle = c.title.toLowerCase().includes(q);
@@ -62,8 +75,9 @@ export const CreationsSection: React.FC = () => {
         const matchesFabric = c.fabrics.some(f => f.toLowerCase().includes(q));
         const matchesOccasion = (c.occasionName || '').toLowerCase().includes(q);
         const matchesSilhouette = (c.silhouette || '').toLowerCase().includes(q);
+        const matchesLine = (c.coutureLine || '').toLowerCase().includes(q);
         
-        if (!matchesTitle && !matchesDesc && !matchesFabric && !matchesOccasion && !matchesSilhouette) {
+        if (!matchesTitle && !matchesDesc && !matchesFabric && !matchesOccasion && !matchesSilhouette && !matchesLine) {
           return false;
         }
       }
@@ -76,7 +90,7 @@ export const CreationsSection: React.FC = () => {
       if (bFeat !== aFeat) return bFeat - aFeat;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [creations, activeUniverseId, searchQuery]);
+  }, [creations, activeUniverseId, likedCreationIds, searchQuery]);
 
   return (
     <section id="creations-section" className="py-10 sm:py-16 bg-[#FAF8F5] min-h-screen font-sans">
@@ -98,14 +112,17 @@ export const CreationsSection: React.FC = () => {
             className="text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight text-[#181512] leading-tight"
             style={{ fontFamily: "'Cinzel', serif" }}
           >
-            Les Pièces d'Exception
+            {activeUniverseId === 'favorites' ? 'Mes Coups de Cœur' : "Les Pièces d'Exception"}
           </h1>
 
           <p 
             className="italic text-sm sm:text-lg text-[#6B5F54] max-w-2xl mx-auto"
             style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
           >
-            « Chaque modèle est patronné et sculpté à vos mesures exactes dans notre atelier d'art. »
+            {activeUniverseId === 'favorites'
+              ? '« Votre sélection privée de robes et tenues prêtes pour un échange direct avec l’Atelier. »'
+              : '« Chaque modèle est patronné et sculpté à vos mesures exactes dans notre atelier d’art. »'
+            }
           </p>
         </div>
 
@@ -122,20 +139,27 @@ export const CreationsSection: React.FC = () => {
                 <button
                   key={u.id}
                   onClick={() => setSelectedOccasionFilter(u.id === 'all' ? null : u.id)}
-                  className={`shrink-0 px-5 py-2.5 rounded-full text-[11px] font-bold tracking-[0.16em] uppercase transition-all duration-300 cursor-pointer ${
+                  className={`shrink-0 flex items-center gap-1.5 px-4 sm:px-5 py-2.5 rounded-full text-[11px] font-bold tracking-[0.16em] uppercase transition-all duration-300 cursor-pointer ${
                     isActive
-                      ? 'bg-[#181512] text-[#FAF8F5] shadow-md scale-[1.02]'
-                      : 'bg-white text-[#6B5F54] hover:bg-[#EFEAE2] border border-[#E0D7CC] hover:text-[#181512]'
+                      ? u.isHeart 
+                        ? 'bg-[#6E2333] text-rose-100 shadow-md scale-[1.02] border border-rose-400/40'
+                        : 'bg-[#181512] text-[#FAF8F5] shadow-md scale-[1.02]'
+                      : u.isHeart
+                        ? 'bg-white text-rose-800 hover:bg-rose-50 border border-rose-200'
+                        : 'bg-white text-[#6B5F54] hover:bg-[#EFEAE2] border border-[#E0D7CC] hover:text-[#181512]'
                   }`}
                   style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                 >
-                  {u.name}
+                  {u.isHeart && (
+                    <Heart className={`w-3.5 h-3.5 ${isActive ? 'fill-rose-300 text-rose-300' : 'fill-rose-500 text-rose-500'}`} />
+                  )}
+                  <span>{u.name}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* Minimalist Search Bar with 3D Focus */}
+          {/* Minimalist Search Bar */}
           <div className="relative w-full md:w-80">
             <Search className="w-4 h-4 text-[#8C7A6B] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
@@ -159,28 +183,80 @@ export const CreationsSection: React.FC = () => {
         </div>
 
         {/* ========================================================================= */}
+        {/* VIP WISHLIST BANNER (Shown when viewing Coups de Cœur with items)        */}
+        {/* ========================================================================= */}
+        {activeUniverseId === 'favorites' && filteredCreations.length > 0 && (
+          <div className="mb-10 p-6 sm:p-7 bg-gradient-to-br from-[#181512] via-[#231E19] to-[#181512] text-white rounded-3xl border border-[#C5A880]/50 shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-6 animate-in fade-in duration-300">
+            <div className="space-y-2 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#C5A880]/20 border border-[#C5A880]/40 text-[#C5A880] text-[10px] font-bold tracking-[0.2em] uppercase">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Sélection Privée • {filteredCreations.length} modèle{filteredCreations.length > 1 ? 's' : ''}</span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-[#FAF8F5]" style={{ fontFamily: "'Cinzel', serif" }}>
+                Transmettre vos coups de cœur à l'Atelier
+              </h3>
+              <p className="text-xs sm:text-sm text-[#D5CABE] max-w-xl leading-relaxed">
+                Envoyez votre sélection personnalisée directement à Vanessa Kaniki sur WhatsApp pour convenir d'un créneau d'essayage à Kinshasa ou démarrer votre confection à distance.
+              </p>
+            </div>
+
+            <div className="w-full lg:w-auto shrink-0 flex flex-col sm:flex-row items-center gap-3">
+              <a
+                href={generateWhatsAppLink(settings.whatsappNumber, buildWishlistShareMessage(filteredCreations, settings.studioName))}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-shimmer w-full sm:w-auto inline-flex items-center justify-center gap-3 px-7 py-4 rounded-full bg-[#1B4332] hover:bg-[#143528] text-white text-xs sm:text-sm font-bold tracking-[0.16em] uppercase border border-[#C5A880]/60 shadow-xl cursor-pointer transition-all active:scale-95"
+                style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+              >
+                <MessageCircle className="w-4 h-4 fill-current text-[#25D366]" />
+                <span>Envoyer ma sélection sur WhatsApp</span>
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
         {/* EDITORIAL 3:4 CREATION GRID WITH 3D HOVER ELEVATION                      */}
         {/* ========================================================================= */}
         {filteredCreations.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-[#EAE3DA] p-8 max-w-lg mx-auto shadow-sm">
-            <Scissors className="w-10 h-10 text-[#C5A880] mx-auto mb-3 opacity-60" />
-            <h3 
-              className="text-lg font-bold text-[#181512] mb-1"
-              style={{ fontFamily: "'Cinzel', serif" }}
-            >
-              Aucune création trouvée
-            </h3>
-            <p className="text-xs text-[#6B5F54] mb-4">Essayez d'ajuster votre recherche ou de réinitialiser le filtre.</p>
-            <button
-              onClick={() => {
-                setSelectedOccasionFilter(null);
-                setSearchQuery('');
-              }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#181512] text-white text-xs font-bold tracking-wider uppercase cursor-pointer hover:bg-[#1B4332] transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Voir tout le catalogue</span>
-            </button>
+          <div className="text-center py-16 sm:py-20 bg-white rounded-3xl border border-[#EAE3DA] p-8 max-w-lg mx-auto shadow-sm space-y-4">
+            {activeUniverseId === 'favorites' ? (
+              <>
+                <div className="w-14 h-14 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center mx-auto text-rose-600">
+                  <Heart className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-[#181512]" style={{ fontFamily: "'Cinzel', serif" }}>
+                  Votre Sélection est Vide
+                </h3>
+                <p className="text-xs text-[#6B5F54] max-w-sm mx-auto leading-relaxed">
+                  Explorez les créations de la Maison Van's et cliquez sur le bouton cœur ❤️ pour composer votre carnet privé de pièces d'exception.
+                </p>
+                <button
+                  onClick={() => setSelectedOccasionFilter(null)}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#181512] hover:bg-[#1B4332] text-white text-xs font-bold tracking-widest uppercase transition-all shadow-md cursor-pointer"
+                >
+                  <span>Explorer la Collection</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Scissors className="w-10 h-10 text-[#C5A880] mx-auto mb-3 opacity-60" />
+                <h3 className="text-lg font-bold text-[#181512]" style={{ fontFamily: "'Cinzel', serif" }}>
+                  Aucune création trouvée
+                </h3>
+                <p className="text-xs text-[#6B5F54] mb-4">Essayez d'ajuster votre recherche ou de réinitialiser le filtre.</p>
+                <button
+                  onClick={() => {
+                    setSelectedOccasionFilter(null);
+                    setSearchQuery('');
+                  }}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#181512] text-white text-xs font-bold tracking-wider uppercase cursor-pointer hover:bg-[#1B4332] transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Voir tout le catalogue</span>
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7 sm:gap-8 lg:gap-10">
@@ -194,6 +270,8 @@ export const CreationsSection: React.FC = () => {
                 settings.whatsappNumber,
                 buildCreationOrderMessage(settings.studioName, creation.title, creation.priceEstimate, creation.silhouette)
               );
+
+              const isLiked = likedCreationIds.includes(creation.id);
 
               return (
                 <div
@@ -238,14 +316,14 @@ export const CreationsSection: React.FC = () => {
                           toggleLikeCreation(creation.id);
                         }}
                         className={`pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md transition-all duration-300 cursor-pointer shadow-md active:scale-90 ${
-                          likedCreationIds.includes(creation.id)
+                          isLiked
                             ? 'bg-[#6E2333]/90 text-rose-200 border border-rose-400/50'
                             : 'bg-black/50 hover:bg-black/75 text-white/90 border border-white/20'
                         }`}
-                        title={likedCreationIds.includes(creation.id) ? 'Retirer des coups de cœur' : 'Ajouter aux coups de cœur'}
+                        title={isLiked ? 'Retirer des coups de cœur' : 'Ajouter aux coups de cœur'}
                         aria-label="Aimer cette création"
                       >
-                        <Heart className={`w-3.5 h-3.5 ${likedCreationIds.includes(creation.id) ? 'fill-rose-400 text-rose-400' : 'text-white'}`} />
+                        <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-400 text-rose-400' : 'text-white'}`} />
                         <span className="text-[11px] font-bold font-mono">{creation.likesCount || 0}</span>
                       </button>
                     </div>
@@ -265,15 +343,17 @@ export const CreationsSection: React.FC = () => {
                   {/* Card Editorial Info Body */}
                   <div className="p-5 sm:p-6 space-y-3.5">
                     <div className="space-y-1.5">
+                      
+                      {/* Haute Couture Line & Timeline */}
                       <div 
-                        className="flex items-center justify-between text-[10.5px] text-[#8C7A6B] uppercase tracking-[0.16em] font-semibold"
+                        className="flex items-center justify-between text-[10px] uppercase tracking-[0.16em] font-bold text-[#8C7A6B]"
                         style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                       >
-                        <span>{creation.silhouette}</span>
+                        <span className="text-[#1B4332] font-semibold">{creation.coutureLine || 'Haute Couture'}</span>
                         {creation.preparationTime && (
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3 text-[#C5A880]" />
-                            {creation.preparationTime}
+                            {creation.preparationTime.split('(')[0].trim()}
                           </span>
                         )}
                       </div>
@@ -317,13 +397,13 @@ export const CreationsSection: React.FC = () => {
                           toggleLikeCreation(creation.id);
                         }}
                         className={`inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg transition-all cursor-pointer select-none active:scale-95 ${
-                          likedCreationIds.includes(creation.id)
+                          isLiked
                             ? 'text-rose-700 bg-rose-50 font-bold'
                             : 'text-[#6A5E52] hover:text-[#181512] hover:bg-[#FAF8F5]'
                         }`}
-                        title={likedCreationIds.includes(creation.id) ? 'Coup de cœur ajouté' : 'Ajouter aux coups de cœur'}
+                        title={isLiked ? 'Coup de cœur ajouté' : 'Ajouter aux coups de cœur'}
                       >
-                        <Heart className={`w-3.5 h-3.5 ${likedCreationIds.includes(creation.id) ? 'fill-rose-600 text-rose-600' : 'text-[#8C7A6B]'}`} />
+                        <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-600 text-rose-600' : 'text-[#8C7A6B]'}`} />
                         <span className="font-mono text-[11px]">{creation.likesCount || 0}</span>
                       </button>
 
@@ -358,7 +438,7 @@ export const CreationsSection: React.FC = () => {
                       </button>
                     </div>
 
-                    {/* Direct WhatsApp Ordering Bar */}
+                    {/* Direct WhatsApp Ordering Bar with Haute Couture Guarantee */}
                     <div className="pt-2.5 border-t border-[#EAE3DA] flex items-center justify-between gap-2">
                       <div className="text-left">
                         <span 

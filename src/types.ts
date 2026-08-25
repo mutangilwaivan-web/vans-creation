@@ -25,6 +25,8 @@ export interface Creation {
   videoUrl?: string; // MP4 link, web video or stream url
   videoThumbnail?: string; // Optional custom thumbnail for video
   priceEstimate?: string; // e.g. "Sur devis (à partir de 650€)"
+  coutureLine?: string; // e.g. "Ligne Gala & Tapis Rouge", "Ligne Mariée d'Exception", "Ligne Tailleur Architectural"
+  fittingDetails?: string; // e.g. "2 essayages à l'Atelier ou suivi visioconférence Diaspora"
   preparationTime?: string; // e.g. "3 à 5 semaines"
   isAvailable: boolean;
   availabilityBadge: 'Sur commande' | 'Pièce unique disponible' | 'En confection';

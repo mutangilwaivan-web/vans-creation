@@ -129,6 +129,8 @@ export const INITIAL_CREATIONS: Creation[] = [
       'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1400&q=85'  // Détail Tissage & Plissé
     ],
     videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-fashion-model-in-a-black-dress-41584-large.mp4',
+    coutureLine: 'Ligne Gala & Tapis Rouge',
+    fittingDetails: '2 séances privées d’essayage à l’Atelier de Kinshasa ou visioconférence guidée pour la Diaspora',
     priceEstimate: 'Sur devis (Confection sur-mesure dès 850$)',
     preparationTime: '4 à 6 semaines (2 séances d’essayage)',
     isAvailable: true,
@@ -142,6 +144,18 @@ export const INITIAL_CREATIONS: Creation[] = [
     ],
     isFeatured: true,
     misEnAvant: true,
+    likesCount: 42,
+    comments: [
+      {
+        id: 'comm-1',
+        authorName: 'Mireille K.',
+        authorLocation: 'Kinshasa (Gombe)',
+        content: 'Le drapé et le tombé de cette robe sont remarquables. Une confection sur-mesure digne des plus grands ateliers parisiens.',
+        rating: 5,
+        createdAt: '18 févr. 2026',
+        isApproved: true,
+      }
+    ],
     createdAt: '2026-01-15',
   },
   {
@@ -589,3 +603,18 @@ export function buildGeneralContactMessage(studioName: string, clientName?: stri
   msg += `\nPouvons-nous convenir d'un rendez-vous ou d'un premier échange ? Merci.`;
   return msg;
 }
+
+export function buildWishlistShareMessage(creations: Creation[], studioName: string): string {
+  const titles = creations.map((c, i) => `${i + 1}. ${c.title.toUpperCase()} (${c.occasionName || 'Haute Couture'})\n   Lien : https://vans-creation.pages.dev/?robe=${c.slug || c.id}`).join('\n\n');
+  
+  return `Bonjour ${studioName},
+
+J'ai sélectionné ${creations.length} création${creations.length > 1 ? 's' : ''} coup de cœur sur votre Atelier Digital :
+
+${titles}
+
+J'aimerais échanger avec vous pour un premier conseil, connaître les créneaux d'essayage à l'Atelier ou les modalités de commande à distance.
+
+Merci d'avance.`;
+}
+

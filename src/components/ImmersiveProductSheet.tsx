@@ -387,6 +387,23 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
               {/* Luxury Technical Specifications (Cartel Couture) */}
               <div className="space-y-3 pt-1">
                 
+                {/* Haute Couture Line */}
+                <div className="p-3.5 rounded-2xl bg-white border border-[#EAE3DA] space-y-1 shadow-xs">
+                  <div 
+                    className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#8C7A6B]"
+                    style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-[#C5A880]" />
+                    <span>Ligne & Niveau de Patronage</span>
+                  </div>
+                  <p 
+                    className="text-xs font-bold text-[#1B4332]"
+                    style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                  >
+                    {creation.coutureLine || 'Ligne Haute Couture Sur-Mesure'}
+                  </p>
+                </div>
+
                 {/* Fabrics */}
                 <div className="p-3.5 rounded-2xl bg-white border border-[#EAE3DA] space-y-1 shadow-xs">
                   <div 
@@ -426,21 +443,23 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
                   </p>
                 </div>
 
-                {/* Confection & Fitting Delays */}
-                <div className="p-3.5 rounded-2xl bg-white border border-[#EAE3DA] space-y-1 shadow-xs">
+                {/* Confection & Fitting Protocol */}
+                <div className="p-3.5 rounded-2xl bg-white border border-[#EAE3DA] space-y-1.5 shadow-xs">
                   <div 
                     className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#8C7A6B]"
                     style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                   >
                     <Clock className="w-3.5 h-3.5 text-[#C5A880]" />
-                    <span>Délai de Confection & Essayages</span>
+                    <span>Protocole de Confection & Essayages</span>
                   </div>
-                  <p 
-                    className="text-xs text-[#181512] font-medium"
-                    style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-                  >
-                    {creation.preparationTime || '3 à 5 semaines'} • 2 séances d'essayage à l'Atelier
-                  </p>
+                  <div className="space-y-1 text-xs text-[#181512]">
+                    <p className="font-semibold text-[#181512]">
+                      Délai : {creation.preparationTime || '3 à 5 semaines'}
+                    </p>
+                    <p className="text-[11.5px] text-[#5C5248] leading-relaxed">
+                      {creation.fittingDetails || '2 séances privées d’essayage à l’Atelier de Kinshasa ou visioconférence guidée pour la Diaspora.'}
+                    </p>
+                  </div>
                 </div>
 
               </div>
