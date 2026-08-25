@@ -7,7 +7,8 @@ import {
   X, 
   Lock, 
   Unlock, 
-  ChevronRight
+  ChevronRight,
+  Heart
 } from 'lucide-react';
 import { generateWhatsAppLink, buildGeneralContactMessage } from '../data/initialData';
 
@@ -17,7 +18,8 @@ export const Navbar: React.FC = () => {
     activeTab, 
     setActiveTab, 
     adminAuthenticated, 
-    setSelectedOccasionFilter 
+    setSelectedOccasionFilter,
+    likedCreationIds
   } = useStudio();
   
   const [isScrolled, setIsScrolled] = useState(false);
@@ -133,8 +135,24 @@ export const Navbar: React.FC = () => {
             })}
           </div>
 
-          {/* Right Action: WhatsApp Direct with Shimmer & Admin Shortcut */}
-          <div className="hidden sm:flex items-center gap-3">
+          {/* Right Action: Wishlist Shortcut, WhatsApp Direct & Admin Shortcut */}
+          <div className="hidden sm:flex items-center gap-2.5">
+            {likedCreationIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedOccasionFilter('favorites');
+                  setActiveTab('creations');
+                  window.scrollTo({ top: 300, behavior: 'smooth' });
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#6E2333]/10 hover:bg-[#6E2333]/20 text-[#6E2333] border border-rose-300/80 text-[11px] font-bold tracking-wider transition-all cursor-pointer shadow-xs active:scale-95"
+                title="Consulter mes coups de cœur"
+              >
+                <Heart className="w-3.5 h-3.5 fill-[#6E2333] text-[#6E2333]" />
+                <span>Coups de Cœur ({likedCreationIds.length})</span>
+              </button>
+            )}
+
             <a
               id="navbar-whatsapp-cta"
               href={whatsappDirectUrl}
@@ -196,6 +214,26 @@ export const Navbar: React.FC = () => {
                 <span>ACCUEIL</span>
                 <ChevronRight className="w-4 h-4 opacity-40" />
               </button>
+
+              {likedCreationIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedOccasionFilter('favorites');
+                    setActiveTab('creations');
+                    setMobileMenuOpen(false);
+                    window.scrollTo({ top: 300, behavior: 'smooth' });
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-[11.5px] font-bold tracking-[0.16em] uppercase bg-rose-50 border border-rose-200 text-rose-800 cursor-pointer transition-colors duration-300 active:scale-[0.99]"
+                  style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                >
+                  <span className="flex items-center gap-2">
+                    <Heart className="w-4 h-4 fill-rose-600 text-rose-600" />
+                    <span>MES COUPS DE CŒUR ({likedCreationIds.length})</span>
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-rose-600" />
+                </button>
+              )}
 
               {navItems.map((item) => {
                 const isActive = activeTab === item.id;

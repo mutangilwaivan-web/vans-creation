@@ -8,6 +8,7 @@ import { AboutSection } from './components/AboutSection';
 import { ContactSection } from './components/ContactSection';
 import { AdminPanel } from './components/AdminPanel';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
+import { FloatingWishlistBar } from './components/FloatingWishlistBar';
 import { Footer } from './components/Footer';
 
 const AppContent: React.FC = () => {
@@ -93,6 +94,9 @@ const AppContent: React.FC = () => {
 
       {/* Quick View / Fiche Couture Modal for Creations */}
       {selectedCreationForDetail && <CreationDetailModal />}
+
+      {/* Floating Magic Wishlist Bar: appears as soon as user has liked dresses */}
+      <FloatingWishlistBar />
 
       {/* Floating WhatsApp Action Button (discreet & clean) */}
       {activeTab !== 'admin' && activeTab !== 'home' && <FloatingWhatsApp />}
