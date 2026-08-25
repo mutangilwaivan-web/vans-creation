@@ -17,7 +17,10 @@ import {
   Clock,
   Coins,
   Film,
-  Play
+  Play,
+  Crown,
+  ChevronRight,
+  Sparkle
 } from 'lucide-react';
 
 interface QuickAddModalProps {
@@ -89,7 +92,6 @@ export const VanessaQuickAddModal: React.FC<QuickAddModalProps> = ({ onSuccess, 
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // Process uploaded files
     const fileList: File[] = Array.from(files);
     fileList.forEach((file: File) => {
       const reader = new FileReader();
@@ -146,7 +148,7 @@ export const VanessaQuickAddModal: React.FC<QuickAddModalProps> = ({ onSuccess, 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      alert('Veuillez donner un nom à la création (ex: Robe Divine AURA)');
+      alert('Veuillez donner un nom à la création (ex: Robe Impériale AURA)');
       return;
     }
 
@@ -194,20 +196,23 @@ export const VanessaQuickAddModal: React.FC<QuickAddModalProps> = ({ onSuccess, 
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-[#E8E1D7] shadow-xl p-6 sm:p-8 space-y-6 animate-in fade-in">
+    <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-[#E5DDD2] shadow-[0_20px_50px_rgba(24,21,18,0.06)] p-6 sm:p-9 space-y-7 animate-in fade-in relative overflow-hidden">
       
+      {/* Top Gold Accent */}
+      <div className="absolute top-0 left-8 right-8 h-[2px] bg-gradient-to-r from-transparent via-[#C5A880] to-transparent" />
+
       {/* Header for Vanessa */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#F2ECE4] pb-5">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFEAE2] text-[#8C7A6B] text-[11px] font-bold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-[#C5A880]" />
-            <span>Mode Simple Spécial Vanessa Kaniki</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#F0EAE1] pb-6">
+        <div className="space-y-1.5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FAF8F5] border border-[#E5DDD2] text-[#8C7A6B] text-[10.5px] font-bold uppercase tracking-[0.2em]">
+            <Crown className="w-3.5 h-3.5 text-[#C5A880]" />
+            <span>Mode Express • Vanessa Kaniki</span>
           </div>
-          <h2 className="font-cinzel text-xl sm:text-2xl font-bold text-[#181512]">
-            Ajouter une Nouvelle Tenue en 3 Étapes
+          <h2 className="font-cinzel text-xl sm:text-2xl font-bold text-[#181512] tracking-wide">
+            Publier une Nouvelle Pièce d'Atelier
           </h2>
-          <p className="text-xs text-[#6B5F54]">
-            Prenez vos photos avec votre téléphone, choisissez le tissu et publiez directement sur votre site.
+          <p className="text-xs text-[#6B5F54] leading-relaxed">
+            Prenez vos photos avec votre téléphone, sélectionnez les tissus et publiez en 3 étapes simples.
           </p>
         </div>
 
@@ -215,40 +220,40 @@ export const VanessaQuickAddModal: React.FC<QuickAddModalProps> = ({ onSuccess, 
           <button
             type="button"
             onClick={onCancel}
-            className="self-start sm:self-center px-4 py-2 rounded-xl text-xs font-bold uppercase text-[#8C7A6B] hover:text-[#181512] hover:bg-[#FAF8F5]"
+            className="self-start sm:self-center px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-[#8C7A6B] hover:text-[#181512] hover:bg-[#FAF8F5] border border-transparent hover:border-[#E5DDD2] transition-all cursor-pointer"
           >
             Fermer
           </button>
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-7" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
         
         {/* ÉTAPE 1 : PHOTOS (JUSQU'À 4 PRISES DE VUES) */}
-        <div className="p-5 rounded-2xl bg-[#FAF8F5] border border-[#E0D7CC] space-y-4">
+        <div className="p-5 sm:p-6 rounded-3xl bg-[#FAF8F5] border border-[#E5DDD2] space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-[#181512] text-[#C5A880] text-xs font-bold flex items-center justify-center">1</span>
+            <div className="flex items-center gap-2.5">
+              <span className="w-7 h-7 rounded-xl bg-[#181512] text-[#D4AF37] text-xs font-bold flex items-center justify-center shadow-xs">1</span>
               <h3 className="font-cinzel text-sm font-bold text-[#181512] uppercase tracking-wider">
                 Photos de la Création (Idéalement 4 vues)
               </h3>
             </div>
-            <span className="text-[11px] text-[#8C7A6B]">
-              {images.length}/4 photo{images.length > 1 ? 's' : ''} ajoutée{images.length > 1 ? 's' : ''}
+            <span className="text-[11px] font-semibold text-[#8C7A6B] bg-white px-2.5 py-1 rounded-full border border-[#E5DDD2]">
+              {images.length}/4 photo{images.length > 1 ? 's' : ''}
             </span>
           </div>
 
-          <p className="text-xs text-[#5C5248]">
-            Ajoutez les photos de votre modèle (Face, Profil, Dos/Traîne, Gros plan sur la couture).
+          <p className="text-xs text-[#6B5F54]">
+            Présentez la pièce sous ses meilleurs angles (Face, Profil, Dos / Traîne, Gros plan sur les finitions).
           </p>
 
           {/* 4 slots grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
             {[0, 1, 2, 3].map((slotIdx) => {
               const currentImg = images[slotIdx];
               return (
-                <div key={slotIdx} className="space-y-1.5 text-center">
-                  <div className="relative aspect-[3/4] rounded-2xl overflow-hidden border-2 border-dashed border-[#D8CFC4] bg-white group hover:border-[#C5A880] transition-all flex flex-col items-center justify-center p-2">
+                <div key={slotIdx} className="space-y-2 text-center">
+                  <div className="relative aspect-[3/4] rounded-2xl overflow-hidden border-2 border-dashed border-[#D8CFC4] bg-white group hover:border-[#C5A880] transition-all duration-300 flex flex-col items-center justify-center p-2 shadow-xs">
                     {currentImg ? (
                       <>
                         <img 
@@ -259,7 +264,7 @@ export const VanessaQuickAddModal: React.FC<QuickAddModalProps> = ({ onSuccess, 
                         <button
                           type="button"
                           onClick={() => removeImage(slotIdx)}
-                          className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-rose-600 text-white rounded-full transition-colors shadow-md"
+                          className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-rose-600 text-white rounded-full transition-colors shadow-md cursor-pointer"
                           title="Supprimer cette photo"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -267,13 +272,13 @@ export const VanessaQuickAddModal: React.FC<QuickAddModalProps> = ({ onSuccess, 
                       </>
                     ) : (
                       <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer text-center p-2">
-                        <div className="w-10 h-10 rounded-full bg-[#FAF8F5] text-[#C5A880] flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                        <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] text-[#C5A880] flex items-center justify-center mb-1 group-hover:scale-110 transition-transform duration-300 border border-[#E5DDD2]">
                           <Camera className="w-5 h-5" />
                         </div>
-                        <span className="text-[10px] font-bold text-[#181512] block">
+                        <span className="text-[10.5px] font-bold text-[#181512] block">
                           + Ajouter
                         </span>
-                        <span className="text-[9px] text-[#8C7A6B] block">
+                        <span className="text-[9px] text-[#8C7A6B] block mt-0.5">
                           {angleLabels[slotIdx].split(' ')[1] || `Vue ${slotIdx + 1}`}
                         </span>
                         <input
@@ -285,7 +290,7 @@ export const VanessaQuickAddModal: React.FC<QuickAddModalProps> = ({ onSuccess, 
                       </label>
                     )}
                   </div>
-                  <span className="text-[10px] text-[#7A695A] font-medium block truncate">
+                  <span className="text-[10px] text-[#8C7A6B] font-medium block truncate">
                     {angleLabels[slotIdx]}
                   </span>
                 </div>
@@ -293,102 +298,35 @@ export const VanessaQuickAddModal: React.FC<QuickAddModalProps> = ({ onSuccess, 
             })}
           </div>
 
-          {/* Quick upload all button */}
-          <div className="pt-2 flex flex-wrap items-center gap-3">
-            <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 bg-[#181512] hover:bg-[#2C2723] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors shadow-sm">
+          {/* Multiple File Upload helper */}
+          <div className="pt-2">
+            <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 bg-[#181512] hover:bg-[#2C2621] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-xs border border-[#3D352E]">
               <Upload className="w-4 h-4 text-[#C5A880]" />
-              <span>Choisir plusieurs photos depuis votre galerie / téléphone</span>
+              <span>Choisir plusieurs photos depuis mon appareil</span>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
                 multiple
+                accept="image/*"
                 className="hidden"
                 onChange={(e) => handleFileChange(e)}
               />
             </label>
           </div>
-
-          {/* Optional Video Upload Section */}
-          <div className="pt-4 border-t border-[#EAE3DA] space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Film className="w-4 h-4 text-[#6E2333]" />
-                <span className="text-xs font-bold text-[#181512] uppercase tracking-wider">
-                  Vidéo ou Défilé de la Pièce (Optionnel)
-                </span>
-              </div>
-              <span className="text-[10px] text-[#8C7A6B] bg-[#EFEAE2] px-2 py-0.5 rounded-full font-semibold">
-                WhatsApp Status / Reels ready
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-              <div>
-                <label className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-[#D8CFC4] hover:border-[#6E2333] text-[#181512] rounded-xl text-xs font-semibold transition-all shadow-xs">
-                  <Play className="w-3.5 h-3.5 text-[#6E2333] fill-current" />
-                  <span>Importer un extrait vidéo (.mp4, .mov)</span>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          if (typeof reader.result === 'string') {
-                            setVideoUrl(reader.result);
-                          }
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </label>
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                  placeholder="Ou collez un lien vidéo direct (https://...)"
-                  className="w-full bg-white border border-[#D8CFC4] rounded-xl px-3 py-2 text-xs text-[#181512] placeholder-[#A09385]"
-                />
-              </div>
-            </div>
-
-            {videoUrl && (
-              <div className="p-3 bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                  <span className="text-xs text-[#181512] truncate font-medium">Vidéo associée prête pour la publication</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setVideoUrl('')}
-                  className="text-xs text-rose-600 font-bold hover:underline shrink-0"
-                >
-                  Supprimer
-                </button>
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* ÉTAPE 2 : INFORMATIONS ESSENTIELLES */}
-        <div className="p-5 rounded-2xl bg-[#FAF8F5] border border-[#E0D7CC] space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-[#181512] text-[#C5A880] text-xs font-bold flex items-center justify-center">2</span>
+        {/* ÉTAPE 2 : INFORMATIONS ET NOM */}
+        <div className="p-5 sm:p-6 rounded-3xl bg-[#FAF8F5] border border-[#E5DDD2] space-y-4">
+          <div className="flex items-center gap-2.5">
+            <span className="w-7 h-7 rounded-xl bg-[#181512] text-[#D4AF37] text-xs font-bold flex items-center justify-center shadow-xs">2</span>
             <h3 className="font-cinzel text-sm font-bold text-[#181512] uppercase tracking-wider">
-              Nom de la Tenue & Occasion
+              Nom, Occasion & Silhouette
             </h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+            <div className="space-y-1">
+              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block">
                 Nom de la Création *
               </label>
               <input
@@ -396,19 +334,19 @@ export const VanessaQuickAddModal: React.FC<QuickAddModalProps> = ({ onSuccess, 
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ex: Robe Impériale AURA, Ensemble Saphir..."
-                className="w-full bg-white border border-[#D8CFC4] rounded-xl px-4 py-2.5 text-xs sm:text-sm text-[#181512] focus:border-[#C5A880] focus:outline-none"
+                placeholder="Ex: Robe Royale KINSHASA AURA"
+                className="w-full bg-white border border-[#E5DDD2] rounded-2xl px-4 py-3 text-xs text-[#181512] focus:outline-none focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 transition-all font-medium"
               />
             </div>
 
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                Occasion / Collection *
+            <div className="space-y-1">
+              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block">
+                Occasion / Catégorie
               </label>
               <select
                 value={occasionName}
                 onChange={(e) => setOccasionName(e.target.value)}
-                className="w-full bg-white border border-[#D8CFC4] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#181512] focus:border-[#C5A880] focus:outline-none"
+                className="w-full bg-white border border-[#E5DDD2] rounded-2xl px-4 py-3 text-xs text-[#181512] focus:outline-none focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 transition-all font-medium"
               >
                 {occasions.map(occ => (
                   <option key={occ.id} value={occ.name}>{occ.name}</option>
@@ -417,191 +355,133 @@ export const VanessaQuickAddModal: React.FC<QuickAddModalProps> = ({ onSuccess, 
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block">
-                Petite Description pour vos Clientes (Facultatif - ou générer en 1 clic)
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  const sampleDesc = `Sublime création sur-mesure confectionnée en ${selectedFabrics.join(' et ')}, silhouette ${selectedSilhouette.toLowerCase()} pour ${occasionName.toLowerCase()}. Finitions soignées à la main dans notre Atelier de Kinshasa.`;
-                  setDescription(sampleDesc);
-                }}
-                className="inline-flex items-center gap-1 text-[10px] font-bold text-[#9E7D53] hover:text-[#181512] bg-[#EFEAE2] hover:bg-[#E2D6C5] px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-                title="Générer automatiquement une description élégante"
-              >
-                <Sparkles className="w-3 h-3 text-[#C5A880]" />
-                <span>Remplir automatiquement pour moi</span>
-              </button>
-            </div>
-            <textarea
-              rows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ex: Robe sirène avec traîne majestueuse et décolleté plongeant brodé de perles fines... (Laissez vide pour une description automatique générée par l'Atelier)"
-              className="w-full bg-white border border-[#D8CFC4] rounded-xl p-3 text-xs text-[#181512] focus:border-[#C5A880] focus:outline-none"
-            />
-            <p className="text-[10px] text-[#8C7A6B] mt-1 italic">
-              💡 Si vous n'avez pas le temps d'écrire, laissez ce champ vide : une description haute couture sera générée automatiquement à partir des tissus et de la coupe choisis !
-            </p>
-          </div>
-        </div>
-
-        {/* ÉTAPE 3 : DÉTAILS COUTURE EN 1 CLIC (TISSUS, COULEURS, COUPE) */}
-        <div className="p-5 rounded-2xl bg-[#FAF8F5] border border-[#E0D7CC] space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-[#181512] text-[#C5A880] text-xs font-bold flex items-center justify-center">3</span>
-            <h3 className="font-cinzel text-sm font-bold text-[#181512] uppercase tracking-wider">
-              Détails Couture en 1 Clic
-            </h3>
-          </div>
-
-          {/* Coupe / Silhouette */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block">
-              Silhouette & Coupe :
+          <div className="space-y-1">
+            <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block">
+              Silhouette / Coupe Signature
             </label>
-            <div className="flex flex-wrap gap-2">
-              {PRESET_SILHOUETTES.map((sil, i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+              {PRESET_SILHOUETTES.map(sil => (
                 <button
-                  key={i}
+                  key={sil}
                   type="button"
                   onClick={() => setSelectedSilhouette(sil)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  className={`p-2.5 rounded-xl text-left text-xs font-semibold transition-all border cursor-pointer ${
                     selectedSilhouette === sil
-                      ? 'bg-[#181512] text-white shadow-sm'
-                      : 'bg-white text-[#5C5248] border border-[#D8CFC4] hover:border-[#181512]'
+                      ? 'bg-[#181512] text-white border-[#181512] shadow-xs'
+                      : 'bg-white hover:bg-[#F5EFEB] text-[#5C5247] border-[#E5DDD2]'
                   }`}
                 >
-                  {sil}
+                  <span className="line-clamp-1">{sil}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Tissus */}
-          <div className="space-y-1.5 pt-2 border-t border-[#EAE3DA]">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block">
-              Tissus Nobles Utilisés (Cliquez pour sélectionner) :
+          <div className="space-y-1">
+            <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block">
+              Description / Histoire de la pièce (Optionnel)
+            </label>
+            <textarea
+              rows={2}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Décrivez les finitions brodées à la main, le drapé fluide, l'effet recherché..."
+              className="w-full bg-white border border-[#E5DDD2] rounded-2xl p-3.5 text-xs text-[#181512] focus:outline-none focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 transition-all"
+            />
+          </div>
+        </div>
+
+        {/* ÉTAPE 3 : TISSUS & COULEURS */}
+        <div className="p-5 sm:p-6 rounded-3xl bg-[#FAF8F5] border border-[#E5DDD2] space-y-4">
+          <div className="flex items-center gap-2.5">
+            <span className="w-7 h-7 rounded-xl bg-[#181512] text-[#D4AF37] text-xs font-bold flex items-center justify-center shadow-xs">3</span>
+            <h3 className="font-cinzel text-sm font-bold text-[#181512] uppercase tracking-wider">
+              Étoffes & Nuances Présentées
+            </h3>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block">
+              Tissus Nobles (Sélectionnez un ou plusieurs)
             </label>
             <div className="flex flex-wrap gap-2">
-              {PRESET_FABRICS.map((fabric, i) => {
+              {PRESET_FABRICS.map(fabric => {
                 const isSelected = selectedFabrics.includes(fabric);
                 return (
                   <button
-                    key={i}
+                    key={fabric}
                     type="button"
                     onClick={() => toggleFabric(fabric)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border cursor-pointer ${
                       isSelected
-                        ? 'bg-[#C5A880] text-[#181512] shadow-sm font-bold'
-                        : 'bg-white text-[#5C5248] border border-[#D8CFC4] hover:bg-[#FAF8F5]'
+                        ? 'bg-[#181512] text-[#D4AF37] border-[#181512] shadow-xs'
+                        : 'bg-white hover:bg-[#F5EFEB] text-[#5C5247] border-[#E5DDD2]'
                     }`}
                   >
-                    {isSelected && <Check className="w-3 h-3" />}
-                    <span>{fabric}</span>
+                    {isSelected && '✓ '}
+                    {fabric}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Couleurs */}
-          <div className="space-y-1.5 pt-2 border-t border-[#EAE3DA]">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block">
-              Couleurs / Nuances Réalisables :
+          <div className="space-y-2">
+            <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block">
+              Couleurs / Nuances
             </label>
             <div className="flex flex-wrap gap-2">
-              {PRESET_COLORS.map((col, i) => {
-                const isSelected = selectedColors.includes(col);
+              {PRESET_COLORS.map(color => {
+                const isSelected = selectedColors.includes(color);
                 return (
                   <button
-                    key={i}
+                    key={color}
                     type="button"
-                    onClick={() => toggleColor(col)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                    onClick={() => toggleColor(color)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border cursor-pointer ${
                       isSelected
-                        ? 'bg-[#181512] text-[#FAF8F5] shadow-sm'
-                        : 'bg-white text-[#5C5248] border border-[#D8CFC4] hover:bg-[#FAF8F5]'
+                        ? 'bg-[#181512] text-[#D4AF37] border-[#181512] shadow-xs'
+                        : 'bg-white hover:bg-[#F5EFEB] text-[#5C5247] border-[#E5DDD2]'
                     }`}
                   >
-                    <span className="w-2 h-2 rounded-full bg-[#C5A880]" />
-                    <span>{col}</span>
+                    {isSelected && '✓ '}
+                    {color}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Délais et prix */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#EAE3DA]">
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                Délai de Confection
-              </label>
+          {/* Featured checkbox */}
+          <div className="pt-2">
+            <label className="inline-flex items-center gap-2.5 cursor-pointer select-none bg-white px-4 py-2.5 rounded-2xl border border-[#E5DDD2]">
               <input
-                type="text"
-                value={preparationTime}
-                onChange={(e) => setPreparationTime(e.target.value)}
-                placeholder="Ex: 3 à 4 semaines"
-                className="w-full bg-white border border-[#D8CFC4] rounded-xl px-3 py-2 text-xs text-[#181512]"
+                type="checkbox"
+                checked={isFeatured}
+                onChange={(e) => setIsFeatured(e.target.checked)}
+                className="w-4 h-4 rounded text-[#181512] border-[#D8CFC4] focus:ring-[#C5A880]"
               />
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                Tarif Estimatif (ou "Sur devis")
-              </label>
-              <input
-                type="text"
-                value={priceEstimate}
-                onChange={(e) => setPriceEstimate(e.target.value)}
-                placeholder="Ex: Sur devis (Dès 750$)"
-                className="w-full bg-white border border-[#D8CFC4] rounded-xl px-3 py-2 text-xs text-[#181512]"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 pt-2">
-            <input
-              type="checkbox"
-              id="quick-feat-check"
-              checked={isFeatured}
-              onChange={(e) => setIsFeatured(e.target.checked)}
-              className="rounded border-[#D8CFC4] text-[#C5A880] focus:ring-[#C5A880]"
-            />
-            <label htmlFor="quick-feat-check" className="text-xs font-bold text-[#181512] cursor-pointer">
-              Mettre en avant sur la page d'accueil (Pièce Signature)
+              <span className="text-xs font-semibold text-[#181512] flex items-center gap-1.5">
+                <Sparkle className="w-3.5 h-3.5 text-[#C5A880]" />
+                <span>Mettre cette création à la une sur l'accueil (Coup de Cœur de Vanessa)</span>
+              </span>
             </label>
           </div>
-
         </div>
 
-        {/* BOUTON DE PUBLICATION */}
-        <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+        {/* SUBMIT BUTTON */}
+        <div className="pt-2">
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full sm:flex-1 py-4 bg-[#181512] hover:bg-[#2C2723] text-white rounded-2xl text-xs sm:text-sm font-bold uppercase tracking-wider shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+            disabled={isSubmitting || !title.trim()}
+            className="w-full py-4 bg-[#181512] hover:bg-[#2C2621] text-[#FAF8F5] rounded-2xl text-xs font-bold uppercase tracking-[0.2em] shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] disabled:opacity-50 border border-[#3D352E]"
           >
-            <Sparkles className="w-4 h-4 text-[#C5A880]" />
-            <span>Publier la Création sur le Site</span>
+            <Crown className="w-4 h-4 text-[#D4AF37]" />
+            <span>{isSubmitting ? 'Publication en cours...' : 'Publier Immédiatement sur la Vitrine'}</span>
           </button>
-
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="w-full sm:w-auto px-6 py-4 bg-[#EFEAE2] hover:bg-[#E4DCCF] text-[#4A423A] rounded-2xl text-xs font-semibold uppercase tracking-wider transition-colors"
-            >
-              Annuler
-            </button>
-          )}
         </div>
 
       </form>
-
     </div>
   );
 };

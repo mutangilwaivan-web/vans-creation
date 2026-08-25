@@ -195,23 +195,54 @@ html, body {
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-behavior: smooth;
-  }
+/* =============================== */
+/* LUXURY ATELIER UTILITY CLASSES   */
+/* =============================== */
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .hero-title-line,
-  .animate-marquee,
-  .animate-float {
-    animation: none !important;
-    opacity: 1;
-    transform: none;
-  }
-  
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+.luxury-glass {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(216, 207, 196, 0.6);
 }
+
+.luxury-dark-glass {
+  background: rgba(24, 21, 18, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(197, 168, 128, 0.25);
+}
+
+.gold-glow {
+  box-shadow: 0 10px 30px -5px rgba(197, 168, 128, 0.25), 0 0 0 1px rgba(197, 168, 128, 0.2);
+}
+
+.gold-glow-subtle {
+  box-shadow: 0 4px 20px -2px rgba(197, 168, 128, 0.15);
+}
+
+.luxury-card-hover {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.luxury-card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px -15px rgba(24, 21, 18, 0.08), 0 0 0 1px rgba(197, 168, 128, 0.3);
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.03); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s ease-in-out infinite;
+}
+

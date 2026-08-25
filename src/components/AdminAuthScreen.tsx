@@ -12,7 +12,9 @@ import {
   UserCheck,
   RotateCcw,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Crown,
+  ChevronLeft
 } from 'lucide-react';
 import { useStudio } from '../context/StudioContext';
 import { db } from '../lib/firebase';
@@ -30,7 +32,7 @@ interface AdminAuthScreenProps {
 }
 
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 60 * 1000; // 1 minute lockout
+const LOCKOUT_DURATION_MS = 60 * 1000;
 
 export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
   onSuccess,
@@ -45,10 +47,10 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
   });
   const [isCheckingConfig, setIsCheckingConfig] = useState(true);
 
-  // Mode: 'login' | 'setup' | 'reset'
+  // View Mode: 'login' | 'setup' | 'reset'
   const [viewMode, setViewMode] = useState<'login' | 'setup' | 'reset'>('login');
 
-  // Form Inputs
+  // Inputs
   const [emailInput, setEmailInput] = useState(settings.email || 'mutangilwaivan@gmail.com');
   const [passwordInput, setPasswordInput] = useState('');
   const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
@@ -96,7 +98,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
           }
         }
       } catch (err) {
-        console.warn('Firestore load security notice:', err);
+        console.warn('Firestore security load notice:', err);
       } finally {
         if (isMounted) setIsCheckingConfig(false);
       }
@@ -137,7 +139,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
       const lockTime = Date.now() + LOCKOUT_DURATION_MS;
       setLockoutUntil(lockTime);
       localStorage.setItem('maison_vans_auth_lockout_until', lockTime.toString());
-      setAuthError(`Trop de tentatives infructueuses. Accès suspendu temporairement pour des raisons de sécurité.`);
+      setAuthError(`Trop de tentatives infructueuses. Accès suspendu temporairement (60s).`);
     } else {
       setAuthError(`Mot de passe incorrect. (${MAX_FAILED_ATTEMPTS - next} tentative(s) restante(s))`);
     }
@@ -165,7 +167,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
     onSuccess();
   };
 
-  // --- 1. SETUP / INITIAL CONFIGURATION ---
+  // --- 1. SETUP / RESET HANDLER ---
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = emailInput.trim().toLowerCase();
@@ -200,18 +202,16 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
         isConfigured: true,
       };
 
-      // Save to Firestore
       try {
         await setDoc(doc(db, 'settings', 'admin_auth'), newConfig);
       } catch (err) {
         console.warn('Firestore setDoc admin_auth notice:', err);
       }
 
-      // Save to localStorage
       localStorage.setItem(ADMIN_AUTH_STORAGE_KEY, JSON.stringify(newConfig));
       setAuthConfig(newConfig);
 
-      setAuthSuccessMessage('✅ Mot de passe administrateur configuré avec succès ! Connexion immédiate...');
+      setAuthSuccessMessage('✅ Mot de passe configuré avec succès ! Connexion immédiate...');
       setTimeout(() => {
         grantAccess(cleanEmail);
       }, 700);
@@ -222,7 +222,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
     }
   };
 
-  // --- 2. LOGIN WITH PASSWORD ---
+  // --- 2. LOGIN HANDLER ---
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (lockoutRemainingSeconds > 0) return;
@@ -246,12 +246,10 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
     try {
       let isVerified = false;
 
-      // 1. Check against Firestore config
       if (authConfig?.passwordHash && authConfig?.salt) {
         isVerified = await verifyPassword(cleanPassword, authConfig.passwordHash, authConfig.salt);
       }
 
-      // 2. If not verified from memory, attempt fresh fetch from Firestore
       if (!isVerified) {
         try {
           const snap = await getDoc(doc(db, 'settings', 'admin_auth'));
@@ -264,7 +262,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
             }
           }
         } catch {
-          // offline
+          // offline fallback
         }
       }
 
@@ -282,11 +280,14 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
 
   if (isCheckingConfig) {
     return (
-      <section className="py-20 bg-[#FAF8F5] min-h-[70vh] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-[#8C7A6B]">
-          <RefreshCw className="w-6 h-6 animate-spin text-[#C5A880]" />
-          <span className="text-xs tracking-wider uppercase font-semibold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Vérification de la sécurité Atelier...
+      <section className="min-h-screen bg-[#141210] flex items-center justify-center relative overflow-hidden">
+        <div className="flex flex-col items-center gap-4 text-[#C5A880]">
+          <div className="relative">
+            <div className="w-12 h-12 rounded-full border-2 border-[#C5A880]/20 border-t-[#C5A880] animate-spin" />
+            <Crown className="w-5 h-5 text-[#C5A880] absolute inset-0 m-auto" />
+          </div>
+          <span className="text-xs tracking-[0.25em] uppercase font-bold text-[#D4AF37]" style={{ fontFamily: "'Cinzel', serif" }}>
+            Maison Van's Creation
           </span>
         </div>
       </section>
@@ -294,36 +295,51 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
   }
 
   return (
-    <section id="admin-login-screen" className="py-12 sm:py-20 bg-[#FAF8F5] min-h-[85vh] flex items-center justify-center px-4 select-none">
-      <div className="max-w-md w-full bg-white p-6 sm:p-9 rounded-3xl border border-[#E8E1D7] shadow-2xl space-y-6 relative overflow-hidden">
-        
-        {/* Top Gold Accent Line */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#C5A880] via-[#8C7A6B] to-[#181512]" />
+    <section id="admin-login-screen" className="min-h-screen bg-[#FAF8F5] flex items-center justify-center px-4 sm:px-6 py-12 relative overflow-hidden select-none">
+      
+      {/* Decorative Ambient Background Elements */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-gradient-to-b from-[#C5A880]/15 via-[#E8D8C4]/10 to-transparent blur-3xl pointer-events-none rounded-full" />
+      <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-[#181512]/5 blur-2xl rounded-full pointer-events-none" />
 
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-[#181512] text-[#C5A880] flex items-center justify-center mx-auto shadow-md border border-[#3D352E]">
-            <ShieldCheck className="w-6 h-6" />
+      {/* Main Luxury Glass Card */}
+      <div className="max-w-md w-full bg-white/95 backdrop-blur-xl p-7 sm:p-10 rounded-3xl border border-[#E5DDD2] shadow-[0_25px_60px_-15px_rgba(24,21,18,0.12)] space-y-7 relative z-10">
+        
+        {/* Top Champagne Gold Fine Border Line */}
+        <div className="absolute top-0 left-8 right-8 h-[2px] bg-gradient-to-r from-transparent via-[#C5A880] to-transparent" />
+
+        {/* Brand Luxury Header */}
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#181512] text-[#D4AF37] shadow-md border border-[#3D352E] mx-auto transform hover:scale-105 transition-transform duration-300">
+            <Crown className="w-7 h-7" />
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#181512] tracking-wide" style={{ fontFamily: "'Cinzel', serif" }}>
-            {viewMode === 'setup' 
-              ? 'Configuration de l’Atelier' 
-              : viewMode === 'reset'
-              ? 'Nouveau Mot de Passe'
-              : 'Espace Atelier Privé'}
-          </h2>
-          <p className="text-xs text-[#6B5F54] leading-relaxed" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            {viewMode === 'setup'
-              ? 'Définissez votre mot de passe confidentiel pour sécuriser l’accès à votre Atelier.'
-              : viewMode === 'reset'
-              ? 'Définissez un nouveau mot de passe administrateur pour votre espace.'
-              : 'Accès sécurisé réservé à la direction de la Maison Van’s Creation.'}
-          </p>
+          
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#FAF8F5] border border-[#E5DDD2] text-[#8C7A6B] text-[10px] font-bold uppercase tracking-[0.2em] mb-1.5">
+              <Sparkles className="w-3 h-3 text-[#C5A880]" />
+              <span>Haute Couture Kinshasa</span>
+            </div>
+            
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#181512] tracking-wide" style={{ fontFamily: "'Cinzel', serif" }}>
+              {viewMode === 'setup' 
+                ? 'Configuration Atelier' 
+                : viewMode === 'reset'
+                ? 'Nouveau Mot de Passe'
+                : 'Espace Atelier Privé'}
+            </h1>
+            
+            <p className="text-xs text-[#6B5F54] mt-1 italic" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
+              {viewMode === 'setup'
+                ? '« Définissez votre mot de passe pour sécuriser l’accès à votre univers de création. »'
+                : viewMode === 'reset'
+                ? '« Définissez votre nouveau mot de passe d’accès confidentiel. »'
+                : '« Accès confidentiel réservé à la direction de la Maison Van’s Creation. »'}
+            </p>
+          </div>
         </div>
 
-        {/* Lockout Banner */}
+        {/* Lockout Warning Banner */}
         {lockoutRemainingSeconds > 0 && (
-          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-start gap-2.5">
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-start gap-2.5 shadow-xs">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             <div>
               <p className="font-bold">Accès temporairement suspendu</p>
@@ -334,7 +350,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
 
         {/* Success Banner */}
         {authSuccessMessage && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs flex items-start gap-2.5 leading-relaxed">
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs flex items-start gap-2.5 leading-relaxed shadow-xs">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
             <p>{authSuccessMessage}</p>
           </div>
@@ -342,7 +358,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
 
         {/* Error Banner */}
         {authError && (
-          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2 leading-relaxed">
+          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-start gap-2 leading-relaxed shadow-xs">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             <span>{authError}</span>
           </div>
@@ -351,11 +367,11 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
         {/* --- 1. LOGIN FORM --- */}
         {viewMode === 'login' && (
           <form onSubmit={handleLogin} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            <div>
-              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#8C7A6B] block">
                 Adresse Email Administrateur
               </label>
-              <div className="relative">
+              <div className="relative group">
                 <input
                   type="email"
                   required
@@ -364,27 +380,27 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                   value={emailInput}
                   onChange={(e) => { setEmailInput(e.target.value); setAuthError(null); }}
                   placeholder="mutangilwaivan@gmail.com"
-                  className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-3 pl-10 text-sm text-[#181512] placeholder-[#A39688] focus:outline-none focus:border-[#1B4332] transition-all disabled:opacity-50"
+                  className="w-full bg-[#FAF8F5] border border-[#E5DDD2] rounded-2xl px-4 py-3.5 pl-11 text-sm text-[#181512] placeholder-[#A89C8F] focus:outline-none focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 transition-all duration-300 disabled:opacity-50"
                 />
-                <Mail className="w-4 h-4 text-[#8C7A6B] absolute left-3.5 top-3.5 pointer-events-none" />
+                <Mail className="w-4 h-4 text-[#8C7A6B] group-focus-within:text-[#C5A880] absolute left-4 top-4 pointer-events-none transition-colors" />
               </div>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B]">
-                  Mot de Passe
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#8C7A6B]">
+                  Mot de Passe Confidentiel
                 </label>
                 <button
                   type="button"
                   onClick={() => { setViewMode('reset'); setAuthError(null); setAuthSuccessMessage(null); }}
-                  className="text-[10.5px] text-[#C5A880] hover:text-[#181512] transition-colors font-medium cursor-pointer"
+                  className="text-[10.5px] text-[#C5A880] hover:text-[#181512] transition-colors font-semibold cursor-pointer underline decoration-[#C5A880]/50"
                 >
-                  Modifier mon mot de passe
+                  Changer de mot de passe ?
                 </button>
               </div>
               
-              <div className="relative">
+              <div className="relative group">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
@@ -393,13 +409,13 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                   value={passwordInput}
                   onChange={(e) => { setPasswordInput(e.target.value); setAuthError(null); }}
                   placeholder="••••••••••••"
-                  className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-3 pl-10 pr-10 text-sm text-[#181512] placeholder-[#A39688] focus:outline-none focus:border-[#1B4332] transition-all disabled:opacity-50"
+                  className="w-full bg-[#FAF8F5] border border-[#E5DDD2] rounded-2xl px-4 py-3.5 pl-11 pr-11 text-sm text-[#181512] placeholder-[#A89C8F] focus:outline-none focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 transition-all duration-300 disabled:opacity-50"
                 />
-                <Lock className="w-4 h-4 text-[#8C7A6B] absolute left-3.5 top-3.5 pointer-events-none" />
+                <Lock className="w-4 h-4 text-[#8C7A6B] group-focus-within:text-[#C5A880] absolute left-4 top-4 pointer-events-none transition-colors" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-3.5 text-[#8C7A6B] hover:text-[#181512] cursor-pointer"
+                  className="absolute right-4 top-4 text-[#8C7A6B] hover:text-[#181512] cursor-pointer transition-colors"
                   aria-label={showPassword ? 'Masquer' : 'Afficher'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -413,41 +429,41 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded text-[#1B4332] focus:ring-[#1B4332]"
+                  className="w-4 h-4 rounded text-[#181512] border-[#D8CFC4] focus:ring-[#C5A880]"
                 />
-                <span>Mémoriser ma session Atelier</span>
+                <span className="text-xs font-medium">Mémoriser ma session sécurisée</span>
               </label>
             </div>
 
             <button
               type="submit"
               disabled={isLoading || lockoutRemainingSeconds > 0}
-              className="w-full py-3.5 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-[0.16em] shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
+              className="w-full py-4 bg-[#181512] hover:bg-[#2C2621] text-[#FAF8F5] rounded-2xl text-xs font-bold uppercase tracking-[0.2em] shadow-md hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.98] disabled:opacity-50 border border-[#3D352E] group"
             >
               {isLoading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin text-[#C5A880]" />
-                  <span>Vérification sécurisée...</span>
+                  <span>Authentification en cours...</span>
                 </>
               ) : (
                 <>
-                  <KeyRound className="w-4 h-4 text-[#C5A880]" />
-                  <span>Connexion Atelier</span>
+                  <KeyRound className="w-4 h-4 text-[#C5A880] group-hover:rotate-12 transition-transform duration-300" />
+                  <span>Accéder à l'Atelier</span>
                 </>
               )}
             </button>
           </form>
         )}
 
-        {/* --- 2. INITIAL SETUP / RESET PASSWORD FORM --- */}
+        {/* --- 2. SETUP / RESET FORM --- */}
         {(viewMode === 'setup' || viewMode === 'reset') && (
           <form onSubmit={handleSetup} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
-              ✨ <strong>{viewMode === 'setup' ? 'Configuration Initiale' : 'Définition du Mot de Passe'} :</strong> Saisissez votre adresse email et choisissez votre mot de passe d’accès confidentiel (minimum 6 caractères).
+            <div className="p-3.5 bg-[#FAF8F5] border border-[#E5DDD2] rounded-2xl text-xs text-[#5C5247] leading-relaxed">
+              ✨ <strong>{viewMode === 'setup' ? 'Configuration Initiale' : 'Nouveau Mot de Passe'} :</strong> Définissez votre mot de passe d’accès confidentiel pour administrer l’Atelier Van’s Creation (minimum 6 caractères).
             </div>
 
-            <div>
-              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#8C7A6B] block">
                 Adresse Email Administrateur
               </label>
               <input
@@ -457,13 +473,13 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 placeholder="mutangilwaivan@gmail.com"
-                className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2.5 text-xs text-[#181512] focus:outline-none focus:border-[#1B4332]"
+                className="w-full bg-[#FAF8F5] border border-[#E5DDD2] rounded-2xl px-4 py-3 text-xs text-[#181512] focus:outline-none focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 transition-all"
               />
             </div>
 
-            <div>
-              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                Mot de Passe (Min. 6 caractères)
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#8C7A6B] block">
+                Nouveau Mot de Passe (Min. 6 caractères)
               </label>
               <input
                 type="password"
@@ -472,12 +488,12 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 placeholder="Votre mot de passe confidentiel"
-                className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2.5 text-xs text-[#181512] focus:outline-none focus:border-[#1B4332]"
+                className="w-full bg-[#FAF8F5] border border-[#E5DDD2] rounded-2xl px-4 py-3 text-xs text-[#181512] focus:outline-none focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 transition-all"
               />
             </div>
 
-            <div>
-              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#8C7A6B] block">
                 Confirmer le Mot de Passe
               </label>
               <input
@@ -487,24 +503,24 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                 value={confirmPasswordInput}
                 onChange={(e) => setConfirmPasswordInput(e.target.value)}
                 placeholder="Retapez le mot de passe"
-                className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2.5 text-xs text-[#181512] focus:outline-none focus:border-[#1B4332]"
+                className="w-full bg-[#FAF8F5] border border-[#E5DDD2] rounded-2xl px-4 py-3 text-xs text-[#181512] focus:outline-none focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 transition-all"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading || passwordInput.length < 6}
-              className="w-full py-3.5 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-[0.16em] shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
+              className="w-full py-4 bg-[#181512] hover:bg-[#2C2621] text-[#FAF8F5] rounded-2xl text-xs font-bold uppercase tracking-[0.2em] shadow-md transition-all flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.98] disabled:opacity-50 border border-[#3D352E]"
             >
               {isLoading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin text-[#C5A880]" />
-                  <span>Enregistrement en cours...</span>
+                  <span>Enregistrement sécurisé...</span>
                 </>
               ) : (
                 <>
                   <UserCheck className="w-4 h-4 text-[#C5A880]" />
-                  <span>Enregistrer & Accéder à l’Atelier</span>
+                  <span>Enregistrer & Ouvrir l'Atelier</span>
                 </>
               )}
             </button>
@@ -513,7 +529,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
               <button
                 type="button"
                 onClick={() => { setViewMode('login'); setAuthError(null); }}
-                className="w-full text-center text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors py-1 cursor-pointer"
+                className="w-full text-center text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors py-1 cursor-pointer font-medium"
               >
                 ← Annuler et revenir à la connexion
               </button>
@@ -522,14 +538,15 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
         )}
 
         {/* Public Catalog Link */}
-        <div className="text-center pt-2 border-t border-[#F0EAE1]">
+        <div className="text-center pt-3 border-t border-[#F0EAE1]">
           <button
             type="button"
             onClick={onCancel}
-            className="text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors underline cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors font-medium cursor-pointer"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            ← Retour au catalogue public
+            <ChevronLeft className="w-3.5 h-3.5" />
+            <span>Retour au catalogue showroom public</span>
           </button>
         </div>
 
