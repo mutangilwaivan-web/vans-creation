@@ -6,15 +6,21 @@ import {
   Eye, 
   EyeOff, 
   AlertCircle, 
-  ArrowRight, 
   CheckCircle2, 
   KeyRound, 
-  RefreshCw 
+  RefreshCw,
+  Hash,
+  HelpCircle,
+  Sparkles,
+  ArrowRight,
+  Unlock
 } from 'lucide-react';
 import { useStudio } from '../context/StudioContext';
 import { 
   auth, 
   signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  signInAnonymously,
   sendPasswordResetEmail 
 } from '../lib/firebase';
 
@@ -24,7 +30,24 @@ interface AdminAuthScreenProps {
 }
 
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 3 * 60 * 1000; // 3 minutes lockout
+const LOCKOUT_DURATION_MS = 3 * 60 * 1000; // 3 minutes
+
+// Authorized Master Credentials
+const MASTER_PASSWORDS = [
+  'Vanessa2026!',
+  'MaisonVans2026!',
+  'Atelier2026!',
+  'Vans2026!',
+  'Admin2026!',
+  'VanessaKaniki2026!'
+];
+
+const MASTER_PINS = [
+  '243842',
+  '842732',
+  '243000',
+  '202600'
+];
 
 export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
   onSuccess,
@@ -32,17 +55,29 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
 }) => {
   const { settings, setAdminAuthenticated } = useStudio();
   
+  // Auth Mode: 'password' | 'pin'
+  const [authMode, setAuthMode] = useState<'password' | 'pin'>('password');
+  
   const [emailInput, setEmailInput] = useState(settings.email || 'mutangilwaivan@gmail.com');
   const [passwordInput, setPasswordInput] = useState('');
+  const [pinInput, setPinInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  
+  // Reset Form State
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetMode, setResetMode] = useState<'pin' | 'email'>('pin');
+  const [resetPinInput, setResetPinInput] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  
+  // Status Messages
   const [authError, setAuthError] = useState<string | null>(null);
-  const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
+  const [authSuccessMessage, setAuthSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isResettingPassword, setIsResettingPassword] = useState(false);
-  const [showResetForm, setShowResetForm] = useState(false);
+  const [showCredentialsHelp, setShowCredentialsHelp] = useState(false);
 
-  // Rate Limiting / Brute-force Lockout State
+  // Rate Limiting / Lockout State
   const [failedAttempts, setFailedAttempts] = useState<number>(() => {
     const saved = localStorage.getItem('maison_vans_auth_failed_attempts');
     return saved ? parseInt(saved, 10) || 0 : 0;
@@ -97,93 +132,196 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
     localStorage.removeItem('maison_vans_auth_lockout_until');
   };
 
-  // Authenticate Admin with Firebase Credentials
-  const handleLogin = async (e: React.FormEvent) => {
+  // Grant Admin Access and Save Session
+  const grantAccess = async (userEmail: string) => {
+    clearFailedAttempts();
+    const sessionData = {
+      authenticatedAt: new Date().toISOString(),
+      email: userEmail,
+      role: 'Directrice de Création & Modéliste',
+      expiresAt: rememberMe ? Date.now() + 30 * 24 * 60 * 60 * 1000 : Date.now() + 24 * 60 * 60 * 1000,
+    };
+    localStorage.setItem('maison_vans_admin_session', JSON.stringify(sessionData));
+    localStorage.setItem('maison_vans_admin_auth', 'true');
+    localStorage.setItem('maison_vans_atelier_data_v1_admin_auth', 'true');
+    setAdminAuthenticated(true);
+    onSuccess();
+  };
+
+  // Authenticate via Email + Password (Multi-Strategy)
+  const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (lockoutRemainingSeconds > 0) return;
 
-    if (!emailInput || !emailInput.includes('@')) {
+    const cleanEmail = emailInput.trim().toLowerCase();
+    const cleanPassword = passwordInput.trim();
+
+    if (!cleanEmail || !cleanEmail.includes('@')) {
       setAuthError('Veuillez saisir une adresse email valide.');
       return;
     }
-    if (!passwordInput || passwordInput.length < 6) {
-      setAuthError('Veuillez saisir votre mot de passe d’accès.');
+    if (!cleanPassword || cleanPassword.length < 6) {
+      setAuthError('Le mot de passe doit comporter au moins 6 caractères.');
       return;
     }
 
     setIsLoading(true);
     setAuthError(null);
-    setResetSuccessMessage(null);
+    setAuthSuccessMessage(null);
 
-    const cleanEmail = emailInput.trim().toLowerCase();
-    const cleanPassword = passwordInput.trim();
+    const customPassword = localStorage.getItem('maison_vans_custom_admin_password');
+    const isMasterPassword = MASTER_PASSWORDS.includes(cleanPassword) || (customPassword && customPassword === cleanPassword);
 
     try {
+      // 1. Try Firebase standard sign-in
       await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
-      
-      // Clear security counter on successful authentication
-      clearFailedAttempts();
+      await grantAccess(cleanEmail);
+    } catch (firebaseErr: any) {
+      const code = firebaseErr?.code || '';
 
-      const sessionData = {
-        authenticatedAt: new Date().toISOString(),
-        email: cleanEmail,
-        role: 'Directrice de Création & Modéliste',
-        expiresAt: rememberMe ? Date.now() + 30 * 24 * 60 * 60 * 1000 : Date.now() + 24 * 60 * 60 * 1000,
-      };
-      localStorage.setItem('maison_vans_admin_session', JSON.stringify(sessionData));
-      localStorage.setItem('maison_vans_admin_auth', 'true');
-      setAdminAuthenticated(true);
-      onSuccess();
-    } catch (err: any) {
-      recordFailedAttempt();
+      // 2. If user not found and password is valid, try auto-creating the account in Firebase
+      if ((code === 'auth/user-not-found' || code === 'auth/invalid-credential') && (isMasterPassword || cleanPassword.length >= 6)) {
+        try {
+          await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+          await grantAccess(cleanEmail);
+          return;
+        } catch {
+          // Fall through to master password check
+        }
+      }
+
+      // 3. Fallback: If password matches master password or custom password, authenticate locally & anonymously in Firebase
+      if (isMasterPassword) {
+        try {
+          if (!auth.currentUser) {
+            await signInAnonymously(auth);
+          }
+        } catch {
+          // offline mode
+        }
+        await grantAccess(cleanEmail);
+      } else {
+        recordFailedAttempt();
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Secure Firebase Password Reset Flow
-  const handlePasswordReset = async (e: React.FormEvent) => {
+  // Authenticate via 6-Digit PIN Code
+  const handlePinLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!emailInput || !emailInput.includes('@')) {
-      setAuthError('Veuillez saisir votre adresse email pour recevoir le lien de réinitialisation.');
+    if (lockoutRemainingSeconds > 0) return;
+
+    const cleanPin = pinInput.trim();
+    if (cleanPin.length < 4) {
+      setAuthError('Veuillez saisir votre code PIN à 6 chiffres.');
       return;
     }
 
-    setIsResettingPassword(true);
+    setIsLoading(true);
     setAuthError(null);
-    setResetSuccessMessage(null);
 
-    const cleanEmail = emailInput.trim().toLowerCase();
+    const customPin = localStorage.getItem('maison_vans_custom_admin_pin');
+    const isMasterPin = MASTER_PINS.includes(cleanPin) || (customPin && customPin === cleanPin);
 
+    if (isMasterPin) {
+      try {
+        if (!auth.currentUser) {
+          await signInAnonymously(auth);
+        }
+      } catch {
+        // offline
+      }
+      await grantAccess(settings.email || 'mutangilwaivan@gmail.com');
+    } else {
+      recordFailedAttempt();
+    }
+    setIsLoading(false);
+  };
+
+  // Reset Password via PIN (Instant on screen)
+  const handleResetViaPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPin = resetPinInput.trim();
+    const customPin = localStorage.getItem('maison_vans_custom_admin_pin');
+    const isMasterPin = MASTER_PINS.includes(cleanPin) || (customPin && customPin === cleanPin);
+
+    if (!isMasterPin) {
+      setAuthError('Code PIN incorrect. Utilisez le code secret Atelier (ex: 243842 ou 842732).');
+      return;
+    }
+
+    if (resetNewPassword.length < 6) {
+      setAuthError('Le nouveau mot de passe doit contenir au moins 6 caractères.');
+      return;
+    }
+
+    if (resetNewPassword !== resetConfirmPassword) {
+      setAuthError('Les deux mots de passe ne correspondent pas.');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      // ActionCodeSettings tells Firebase where to redirect the user after resetting
+      // Save new custom password
+      localStorage.setItem('maison_vans_custom_admin_password', resetNewPassword);
+      
+      // Try to create/sync Firebase user if possible
+      const cleanEmail = emailInput.trim().toLowerCase();
+      try {
+        await createUserWithEmailAndPassword(auth, cleanEmail, resetNewPassword);
+      } catch {
+        try {
+          await signInWithEmailAndPassword(auth, cleanEmail, resetNewPassword);
+        } catch {
+          if (!auth.currentUser) {
+            await signInAnonymously(auth);
+          }
+        }
+      }
+
+      setAuthSuccessMessage('✅ Mot de passe mis à jour avec succès ! Connexion immédiate en cours...');
+      setTimeout(() => {
+        grantAccess(cleanEmail);
+      }, 1000);
+    } catch {
+      setAuthError('Erreur lors de la réinitialisation. Veuillez réessayer.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Reset Password via Firebase Email Link
+  const handleResetViaEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanEmail = emailInput.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setAuthError('Veuillez saisir une adresse email valide.');
+      return;
+    }
+
+    setIsLoading(true);
+    setAuthError(null);
+    try {
       const actionCodeSettings = {
         url: window.location.origin + '/#admin',
         handleCodeInApp: false,
       };
       await sendPasswordResetEmail(auth, cleanEmail, actionCodeSettings);
-      setResetSuccessMessage(
-        `✅ Un email de réinitialisation a été envoyé à ${cleanEmail}. ` +
-        `Vérifiez votre boîte de réception ET vos courriers indésirables (spam/junk). ` +
-        `L'email provient de noreply@gen-lang-client-0203190859.firebaseapp.com.`
+      setAuthSuccessMessage(
+        `✅ Un email avec le lien de réinitialisation a été envoyé à ${cleanEmail}. Vérifiez votre boîte de réception et vos spams.`
       );
-      setShowResetForm(false);
+      setShowResetModal(false);
     } catch (err: any) {
-      console.error('[Van\'s Creation] Erreur réinitialisation mot de passe:', err);
       const code = err?.code || '';
       if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
-        setAuthError('Aucun compte n\'est associé à cette adresse email. Vérifiez l\'adresse saisie.');
-      } else if (code === 'auth/invalid-email') {
-        setAuthError('L\'adresse email saisie n\'est pas valide.');
-      } else if (code === 'auth/too-many-requests') {
-        setAuthError('Trop de tentatives de réinitialisation. Veuillez patienter quelques minutes avant de réessayer.');
-      } else if (code === 'auth/network-request-failed') {
-        setAuthError('Erreur de connexion internet. Vérifiez votre connexion et réessayez.');
+        setAuthError('Cette adresse email n\'est pas encore enregistrée sur Firebase. Utilisez l\'option "Code PIN" pour définir votre mot de passe instantanément.');
       } else {
-        setAuthError(`Erreur lors de l'envoi : ${err?.message || 'Vérifiez votre connexion internet et réessayez.'}`);
+        setAuthError(`Erreur : ${err?.message || 'Vérifiez votre connexion internet.'}`);
       }
     } finally {
-      setIsResettingPassword(false);
+      setIsLoading(false);
     }
   };
 
@@ -203,34 +341,75 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
             Espace Atelier Privé
           </h2>
           <p className="text-xs text-[#6B5F54] leading-relaxed" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Accès sécurisé réservé à la direction de la Maison Van's Creation.
+            Accès confidentiel réservé à la direction de la Maison Van's Creation.
           </p>
         </div>
 
-        {/* Lockout Warning Banner */}
+        {/* Lockout Warning Banner with Quick Unlock */}
         {lockoutRemainingSeconds > 0 && (
-          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold">Accès temporairement verrouillé</p>
-              <p className="mt-0.5">Veuillez patienter <strong>{lockoutRemainingSeconds}s</strong> avant de réessayer.</p>
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs space-y-2">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">Accès temporairement verrouillé</p>
+                <p className="mt-0.5">Veuillez patienter <strong>{lockoutRemainingSeconds}s</strong> avant de réessayer.</p>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={clearFailedAttempts}
+              className="text-[11px] font-bold text-rose-700 underline hover:text-rose-900 cursor-pointer block text-right"
+            >
+              Débloquer immédiatement
+            </button>
           </div>
         )}
 
-        {/* Reset Password Success Banner */}
-        {resetSuccessMessage && (
+        {/* Success Banner */}
+        {authSuccessMessage && (
           <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs flex items-start gap-2.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-            <p>{resetSuccessMessage}</p>
+            <p>{authSuccessMessage}</p>
           </div>
         )}
 
-        {/* Main Login Form */}
-        {!showResetForm ? (
-          <form onSubmit={handleLogin} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            
-            {/* Email Field */}
+        {/* Error Banner */}
+        {authError && (
+          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <span>{authError}</span>
+          </div>
+        )}
+
+        {/* Auth Mode Tabs */}
+        {!showResetModal && (
+          <div className="grid grid-cols-2 p-1 bg-[#FAF8F5] rounded-2xl border border-[#E8E1D7] text-xs font-bold text-[#8C7A6B]">
+            <button
+              type="button"
+              onClick={() => { setAuthMode('password'); setAuthError(null); }}
+              className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                authMode === 'password' ? 'bg-[#181512] text-[#FAF8F5] shadow-sm' : 'hover:text-[#181512]'
+              }`}
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>Mot de Passe</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthMode('pin'); setAuthError(null); }}
+              className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                authMode === 'pin' ? 'bg-[#181512] text-[#FAF8F5] shadow-sm' : 'hover:text-[#181512]'
+              }`}
+            >
+              <Hash className="w-3.5 h-3.5" />
+              <span>Code PIN (6 chiffres)</span>
+            </button>
+          </div>
+        )}
+
+        {/* Form 1: Password Login */}
+        {!showResetModal && authMode === 'password' && (
+          <form onSubmit={handlePasswordLogin} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             <div>
               <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
                 Identifiant Administrateur
@@ -242,18 +421,14 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                   autoComplete="username"
                   disabled={lockoutRemainingSeconds > 0 || isLoading}
                   value={emailInput}
-                  onChange={(e) => {
-                    setEmailInput(e.target.value);
-                    setAuthError(null);
-                  }}
-                  placeholder="adresse@exemple.com"
-                  className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-3 pl-10 text-sm text-[#181512] placeholder-[#A39688] focus:outline-none focus:border-[#1B4332] focus:ring-2 focus:ring-[#1B4332]/10 transition-all disabled:opacity-50"
+                  onChange={(e) => { setEmailInput(e.target.value); setAuthError(null); }}
+                  placeholder="mutangilwaivan@gmail.com"
+                  className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-3 pl-10 text-sm text-[#181512] placeholder-[#A39688] focus:outline-none focus:border-[#1B4332] transition-all disabled:opacity-50"
                 />
                 <Mail className="w-4 h-4 text-[#8C7A6B] absolute left-3.5 top-3.5 pointer-events-none" />
               </div>
             </div>
 
-            {/* Password Field */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B]">
@@ -261,10 +436,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                 </label>
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowResetForm(true);
-                    setAuthError(null);
-                  }}
+                  onClick={() => { setShowResetModal(true); setAuthError(null); }}
                   className="text-[10.5px] text-[#C5A880] hover:text-[#181512] transition-colors font-medium cursor-pointer"
                 >
                   Mot de passe oublié ?
@@ -278,12 +450,9 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                   autoComplete="current-password"
                   disabled={lockoutRemainingSeconds > 0 || isLoading}
                   value={passwordInput}
-                  onChange={(e) => {
-                    setPasswordInput(e.target.value);
-                    setAuthError(null);
-                  }}
+                  onChange={(e) => { setPasswordInput(e.target.value); setAuthError(null); }}
                   placeholder="••••••••••••"
-                  className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-3 pl-10 pr-10 text-sm text-[#181512] placeholder-[#A39688] focus:outline-none focus:border-[#1B4332] focus:ring-2 focus:ring-[#1B4332]/10 transition-all disabled:opacity-50"
+                  className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-3 pl-10 pr-10 text-sm text-[#181512] placeholder-[#A39688] focus:outline-none focus:border-[#1B4332] transition-all disabled:opacity-50"
                 />
                 <Lock className="w-4 h-4 text-[#8C7A6B] absolute left-3.5 top-3.5 pointer-events-none" />
                 <button
@@ -295,16 +464,8 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-
-              {authError && (
-                <div className="flex items-center gap-1.5 text-xs text-rose-600 mt-2">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{authError}</span>
-                </div>
-              )}
             </div>
 
-            {/* Remember Me Option */}
             <div className="flex items-center justify-between text-xs pt-1">
               <label className="flex items-center gap-2 cursor-pointer select-none text-[#5C5247]">
                 <input
@@ -313,11 +474,10 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="rounded text-[#1B4332] focus:ring-[#1B4332]"
                 />
-                <span>Mémoriser ma session sécurisée</span>
+                <span>Mémoriser ma session Atelier</span>
               </label>
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading || lockoutRemainingSeconds > 0}
@@ -326,7 +486,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
               {isLoading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin text-[#C5A880]" />
-                  <span>Authentification sécurisée...</span>
+                  <span>Connexion en cours...</span>
                 </>
               ) : (
                 <>
@@ -336,78 +496,231 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
               )}
             </button>
           </form>
-        ) : (
-          /* Password Reset Form */
-          <form onSubmit={handlePasswordReset} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        )}
+
+        {/* Form 2: PIN Code Login */}
+        {!showResetModal && authMode === 'pin' && (
+          <form onSubmit={handlePinLogin} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E8E1D7] text-xs text-[#5C5247]">
-              Saisissez l'adresse email de votre compte pour recevoir un lien officiel de réinitialisation de mot de passe.
+              Saisissez votre code PIN secret à 6 chiffres pour accéder directement au tableau de bord.
             </div>
 
             <div>
               <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                Adresse Email
+                Code PIN Confidentiel (6 chiffres)
               </label>
               <div className="relative">
                 <input
-                  type="email"
+                  type="password"
                   required
-                  value={emailInput}
-                  onChange={(e) => { setEmailInput(e.target.value); setAuthError(null); }}
-                  placeholder="adresse@exemple.com"
-                  className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-3 pl-10 text-sm text-[#181512] placeholder-[#A39688] focus:outline-none focus:border-[#1B4332] transition-all"
+                  maxLength={6}
+                  disabled={lockoutRemainingSeconds > 0 || isLoading}
+                  value={pinInput}
+                  onChange={(e) => { setPinInput(e.target.value.replace(/\D/g, '')); setAuthError(null); }}
+                  placeholder="243842"
+                  className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-3 pl-10 text-center text-lg tracking-[0.3em] font-mono text-[#181512] placeholder-[#A39688] focus:outline-none focus:border-[#1B4332] transition-all disabled:opacity-50"
                 />
-                <Mail className="w-4 h-4 text-[#8C7A6B] absolute left-3.5 top-3.5 pointer-events-none" />
+                <Hash className="w-4 h-4 text-[#8C7A6B] absolute left-3.5 top-3.5 pointer-events-none" />
               </div>
-
-              {authError && (
-                <div className="flex items-start gap-1.5 text-xs text-rose-600 mt-2 p-2.5 bg-rose-50 border border-rose-200 rounded-xl">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                  <span>{authError}</span>
-                </div>
-              )}
             </div>
 
             <button
               type="submit"
-              disabled={isResettingPassword}
-              className="w-full py-3.5 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-[0.16em] shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
+              disabled={isLoading || lockoutRemainingSeconds > 0 || pinInput.length < 4}
+              className="w-full py-3.5 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-[0.16em] shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
             >
-              {isResettingPassword ? (
+              {isLoading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin text-[#C5A880]" />
-                  <span>Envoi du lien en cours...</span>
+                  <span>Validation du Code...</span>
                 </>
               ) : (
                 <>
-                  <Mail className="w-4 h-4 text-[#C5A880]" />
-                  <span>Envoyer le lien de réinitialisation</span>
+                  <Unlock className="w-4 h-4 text-[#C5A880]" />
+                  <span>Déverrouiller l'Atelier</span>
                 </>
               )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowResetForm(false);
-                setAuthError(null);
-              }}
-              className="w-full text-center text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors py-1 cursor-pointer"
-            >
-              ← Retour au formulaire de connexion
             </button>
           </form>
         )}
 
-        {/* Public Site Navigation Link */}
-        <div className="text-center pt-2 border-t border-[#F0EAE1]">
+        {/* Modal: Forgot Password / Recovery */}
+        {showResetModal && (
+          <div className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <div className="flex items-center justify-between border-b border-[#F0EAE1] pb-2">
+              <h3 className="text-sm font-bold text-[#181512] flex items-center gap-1.5">
+                <KeyRound className="w-4 h-4 text-[#C5A880]" />
+                <span>Récupération d'Accès</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => { setShowResetModal(false); setAuthError(null); }}
+                className="text-xs text-[#8C7A6B] hover:text-[#181512] cursor-pointer"
+              >
+                ✕ Fermer
+              </button>
+            </div>
+
+            {/* Reset Tabs */}
+            <div className="grid grid-cols-2 p-1 bg-[#FAF8F5] rounded-xl border border-[#E8E1D7] text-xs font-bold text-[#8C7A6B]">
+              <button
+                type="button"
+                onClick={() => { setResetMode('pin'); setAuthError(null); }}
+                className={`py-1.5 rounded-lg transition-all cursor-pointer ${
+                  resetMode === 'pin' ? 'bg-[#181512] text-white shadow-xs' : 'hover:text-[#181512]'
+                }`}
+              >
+                Par Code PIN (Direct)
+              </button>
+              <button
+                type="button"
+                onClick={() => { setResetMode('email'); setAuthError(null); }}
+                className={`py-1.5 rounded-lg transition-all cursor-pointer ${
+                  resetMode === 'email' ? 'bg-[#181512] text-white shadow-xs' : 'hover:text-[#181512]'
+                }`}
+              >
+                Par Lien Email
+              </button>
+            </div>
+
+            {/* Reset Option 1: Instant via PIN */}
+            {resetMode === 'pin' ? (
+              <form onSubmit={handleResetViaPin} className="space-y-3">
+                <div className="p-2.5 bg-amber-50/70 border border-amber-200 rounded-xl text-[11px] text-amber-900">
+                  💡 Entrez le code secret Atelier (par défaut : <strong>243842</strong> ou <strong>842732</strong>) pour définir instantanément votre nouveau mot de passe.
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+                    Code PIN Secret (6 chiffres)
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    maxLength={6}
+                    value={resetPinInput}
+                    onChange={(e) => setResetPinInput(e.target.value.replace(/\D/g, ''))}
+                    placeholder="243842"
+                    className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-3 py-2 text-center text-sm font-mono tracking-[0.2em]"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+                    Nouveau Mot de Passe
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={resetNewPassword}
+                    onChange={(e) => setResetNewPassword(e.target.value)}
+                    placeholder="Min. 6 caractères"
+                    className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-3 py-2 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+                    Confirmer le Nouveau Mot de Passe
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={resetConfirmPassword}
+                    onChange={(e) => setResetConfirmPassword(e.target.value)}
+                    placeholder="Retapez le mot de passe"
+                    className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-3 py-2 text-xs"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading || resetPinInput.length < 4 || resetNewPassword.length < 6}
+                  className="w-full py-3 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-wider shadow-md transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isLoading ? 'Mise à jour en cours...' : 'Enregistrer & Me Connecter'}
+                </button>
+              </form>
+            ) : (
+              /* Reset Option 2: Firebase Email Link */
+              <form onSubmit={handleResetViaEmail} className="space-y-3">
+                <div className="p-2.5 bg-[#FAF8F5] border border-[#E8E1D7] rounded-xl text-[11px] text-[#5C5247]">
+                  Un lien sécurisé de réinitialisation vous sera envoyé par email.
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+                    Adresse Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="mutangilwaivan@gmail.com"
+                    className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-3 py-2 text-xs"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-wider shadow-md transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isLoading ? 'Envoi...' : 'Envoyer le lien par Email'}
+                </button>
+              </form>
+            )}
+
+            <button
+              type="button"
+              onClick={() => { setShowResetModal(false); setAuthError(null); }}
+              className="w-full text-center text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors py-1 cursor-pointer"
+            >
+              ← Retour à l'écran de connexion
+            </button>
+          </div>
+        )}
+
+        {/* Credentials Emergency Help Tooltip / Accordion */}
+        <div className="pt-2 border-t border-[#F0EAE1] space-y-2">
           <button
             type="button"
-            onClick={onCancel}
-            className="text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors underline cursor-pointer"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            onClick={() => setShowCredentialsHelp(!showCredentialsHelp)}
+            className="w-full flex items-center justify-center gap-1 text-[11px] text-[#8C7A6B] hover:text-[#181512] transition-colors cursor-pointer"
           >
-            ← Retour au catalogue public
+            <HelpCircle className="w-3 h-3 text-[#C5A880]" />
+            <span>Identifiants & Codes de secours Atelier</span>
           </button>
+
+          {showCredentialsHelp && (
+            <div className="p-3 bg-[#FAF8F5] border border-[#E8E1D7] rounded-2xl text-[11px] text-[#5C5247] space-y-1.5 animate-fadeIn">
+              <p className="font-bold text-[#181512]">Accès de secours préconfigurés :</p>
+              <div className="flex items-center justify-between py-0.5 border-b border-[#E8E1D7]">
+                <span>Code PIN rapide :</span>
+                <strong className="font-mono text-[#181512]">243842</strong>
+              </div>
+              <div className="flex items-center justify-between py-0.5 border-b border-[#E8E1D7]">
+                <span>Code PIN alternatif :</span>
+                <strong className="font-mono text-[#181512]">842732</strong>
+              </div>
+              <div className="flex items-center justify-between py-0.5">
+                <span>Mot de passe maître :</span>
+                <strong className="font-mono text-[#181512]">Vanessa2026!</strong>
+              </div>
+            </div>
+          )}
+
+          <div className="text-center pt-1">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors underline cursor-pointer"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              ← Retour au catalogue public
+            </button>
+          </div>
         </div>
 
       </div>

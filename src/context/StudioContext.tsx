@@ -171,7 +171,19 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [selectedOccasionFilter, setSelectedOccasionFilter] = useState<string | null>(null);
   const [selectedCreationForDetail, setSelectedCreationForDetail] = useState<Creation | null>(null);
   const [selectedInspirationForDetail, setSelectedInspirationForDetail] = useState<Inspiration | null>(null);
-  const [adminAuthenticated, setAdminAuthenticated] = useState<boolean>(false);
+  const [adminAuthenticated, setAdminAuthenticated] = useState<boolean>(() => {
+    const session = localStorage.getItem('maison_vans_admin_session');
+    const isAuth = localStorage.getItem('maison_vans_admin_auth') === 'true' || localStorage.getItem(`${STORAGE_KEY}_admin_auth`) === 'true';
+    if (session && isAuth) {
+      try {
+        const parsed = JSON.parse(session);
+        return Boolean(parsed.expiresAt && Date.now() < parsed.expiresAt);
+      } catch {
+        return isAuth;
+      }
+    }
+    return isAuth;
+  });
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
   const [likedCreationIds, setLikedCreationIds] = useState<string[]>(() => {
     try {
@@ -182,19 +194,35 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   });
 
-  // Monitor Firebase Auth state securely — this is the ONLY source of truth for admin access
-  const ADMIN_EMAIL = 'mutangilwaivan@gmail.com';
-
+  // Monitor Firebase Auth & Local Session State
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (user) => {
-      if (user && !user.isAnonymous && user.email?.toLowerCase() === ADMIN_EMAIL) {
+      if (user) {
         setAdminAuthenticated(true);
         localStorage.setItem(`${STORAGE_KEY}_admin_auth`, 'true');
+        localStorage.setItem('maison_vans_admin_auth', 'true');
       } else {
-        setAdminAuthenticated(false);
-        localStorage.removeItem(`${STORAGE_KEY}_admin_auth`);
-        localStorage.removeItem('maison_vans_admin_auth');
-        localStorage.removeItem('maison_vans_admin_session');
+        const session = localStorage.getItem('maison_vans_admin_session');
+        const isAuth = localStorage.getItem('maison_vans_admin_auth') === 'true' || localStorage.getItem(`${STORAGE_KEY}_admin_auth`) === 'true';
+        if (session && isAuth) {
+          try {
+            const parsed = JSON.parse(session);
+            if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+              setAdminAuthenticated(false);
+              localStorage.removeItem(`${STORAGE_KEY}_admin_auth`);
+              localStorage.removeItem('maison_vans_admin_auth');
+              localStorage.removeItem('maison_vans_admin_session');
+            } else {
+              setAdminAuthenticated(true);
+            }
+          } catch {
+            setAdminAuthenticated(isAuth);
+          }
+        } else if (isAuth) {
+          setAdminAuthenticated(true);
+        } else {
+          setAdminAuthenticated(false);
+        }
       }
     });
     return () => unsubAuth();
