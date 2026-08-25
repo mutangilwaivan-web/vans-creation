@@ -10,10 +10,10 @@ import {
   KeyRound, 
   RefreshCw,
   Hash,
-  HelpCircle,
   Sparkles,
   ArrowRight,
-  Unlock
+  MessageCircle,
+  Key
 } from 'lucide-react';
 import { useStudio } from '../context/StudioContext';
 import { 
@@ -21,8 +21,16 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signInAnonymously,
-  sendPasswordResetEmail 
+  db
 } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { 
+  hashSecret, 
+  verifySecret, 
+  AdminSecurityConfig, 
+  ADMIN_SECURITY_STORAGE_KEY 
+} from '../lib/security';
+import { generateWhatsAppLink } from '../data/initialData';
 
 interface AdminAuthScreenProps {
   onSuccess: () => void;
@@ -30,24 +38,7 @@ interface AdminAuthScreenProps {
 }
 
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 3 * 60 * 1000; // 3 minutes
-
-// Authorized Master Credentials
-const MASTER_PASSWORDS = [
-  'Vanessa2026!',
-  'MaisonVans2026!',
-  'Atelier2026!',
-  'Vans2026!',
-  'Admin2026!',
-  'VanessaKaniki2026!'
-];
-
-const MASTER_PINS = [
-  '243842',
-  '842732',
-  '243000',
-  '202600'
-];
+const LOCKOUT_DURATION_MS = 60 * 1000; // 1 minute lockout on brute force
 
 export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
   onSuccess,
@@ -55,29 +46,38 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
 }) => {
   const { settings, setAdminAuthenticated } = useStudio();
   
-  // Auth Mode: 'password' | 'pin'
-  const [authMode, setAuthMode] = useState<'password' | 'pin'>('password');
-  
+  // Security Config State from Firestore / Local Storage
+  const [securityConfig, setSecurityConfig] = useState<AdminSecurityConfig | null>(() => {
+    const saved = localStorage.getItem(ADMIN_SECURITY_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [isCheckingConfig, setIsCheckingConfig] = useState(true);
+
+  // Form Views: 'login' | 'setup' | 'forgot_password'
+  const [viewMode, setViewMode] = useState<'login' | 'setup' | 'forgot_password'>('login');
+
+  // Login Form Inputs
   const [emailInput, setEmailInput] = useState(settings.email || 'mutangilwaivan@gmail.com');
   const [passwordInput, setPasswordInput] = useState('');
-  const [pinInput, setPinInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  
-  // Reset Form State
-  const [showResetModal, setShowResetModal] = useState(false);
-  const [resetMode, setResetMode] = useState<'pin' | 'email'>('pin');
-  const [resetPinInput, setResetPinInput] = useState('');
-  const [resetNewPassword, setResetNewPassword] = useState('');
-  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
-  
-  // Status Messages
+
+  // Setup Form Inputs (Initial Configuration)
+  const [setupPassword, setSetupPassword] = useState('');
+  const [setupConfirmPassword, setSetupConfirmPassword] = useState('');
+  const [setupRecoveryPin, setSetupRecoveryPin] = useState('');
+
+  // Forgot Password / Recovery Inputs
+  const [recoveryPinInput, setRecoveryPinInput] = useState('');
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [confirmNewPasswordInput, setConfirmNewPasswordInput] = useState('');
+
+  // Status & Feedback
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccessMessage, setAuthSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showCredentialsHelp, setShowCredentialsHelp] = useState(false);
 
-  // Rate Limiting / Lockout State
+  // Lockout / Rate Limiting
   const [failedAttempts, setFailedAttempts] = useState<number>(() => {
     const saved = localStorage.getItem('maison_vans_auth_failed_attempts');
     return saved ? parseInt(saved, 10) || 0 : 0;
@@ -88,7 +88,43 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
   });
   const [lockoutRemainingSeconds, setLockoutRemainingSeconds] = useState<number>(0);
 
-  // Lockout Countdown Timer
+  // Fetch or sync security config from Firestore on mount
+  useEffect(() => {
+    let isMounted = true;
+    const fetchConfig = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'admin_auth');
+        const snap = await getDoc(docRef);
+        if (snap.exists() && isMounted) {
+          const data = snap.data() as AdminSecurityConfig;
+          setSecurityConfig(data);
+          localStorage.setItem(ADMIN_SECURITY_STORAGE_KEY, JSON.stringify(data));
+          if (data.isInitialized) {
+            setViewMode('login');
+          } else {
+            setViewMode('setup');
+          }
+        } else if (isMounted) {
+          // If no doc in Firestore and no local storage config, prompt for initial setup
+          const localSaved = localStorage.getItem(ADMIN_SECURITY_STORAGE_KEY);
+          if (!localSaved) {
+            setViewMode('setup');
+          } else {
+            setViewMode('login');
+          }
+        }
+      } catch (err) {
+        console.warn('Firestore security sync notice (operating from cache):', err);
+      } finally {
+        if (isMounted) setIsCheckingConfig(false);
+      }
+    };
+
+    fetchConfig();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Lockout countdown timer
   useEffect(() => {
     const checkLockout = () => {
       const now = Date.now();
@@ -111,17 +147,17 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
   }, [lockoutUntil]);
 
   const recordFailedAttempt = () => {
-    const nextAttempts = failedAttempts + 1;
-    setFailedAttempts(nextAttempts);
-    localStorage.setItem('maison_vans_auth_failed_attempts', nextAttempts.toString());
+    const next = failedAttempts + 1;
+    setFailedAttempts(next);
+    localStorage.setItem('maison_vans_auth_failed_attempts', next.toString());
 
-    if (nextAttempts >= MAX_FAILED_ATTEMPTS) {
+    if (next >= MAX_FAILED_ATTEMPTS) {
       const lockTime = Date.now() + LOCKOUT_DURATION_MS;
       setLockoutUntil(lockTime);
       localStorage.setItem('maison_vans_auth_lockout_until', lockTime.toString());
-      setAuthError(`Trop de tentatives infructueuses. Accès temporairement suspendu pour des raisons de sécurité.`);
+      setAuthError(`Trop de tentatives. Accès suspendu temporairement pour des raisons de sécurité.`);
     } else {
-      setAuthError(`Identifiants invalides. (${MAX_FAILED_ATTEMPTS - nextAttempts} tentative(s) restante(s))`);
+      setAuthError(`Mot de passe incorrect. (${MAX_FAILED_ATTEMPTS - next} tentative(s) restante(s))`);
     }
   };
 
@@ -132,7 +168,6 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
     localStorage.removeItem('maison_vans_auth_lockout_until');
   };
 
-  // Grant Admin Access and Save Session
   const grantAccess = async (userEmail: string) => {
     clearFailedAttempts();
     const sessionData = {
@@ -148,8 +183,75 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
     onSuccess();
   };
 
-  // Authenticate via Email + Password (Multi-Strategy)
-  const handlePasswordLogin = async (e: React.FormEvent) => {
+  // --- 1. INITIAL SETUP HANDLER ---
+  const handleInitialSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (setupPassword.length < 6) {
+      setAuthError('Le mot de passe doit comporter au moins 6 caractères.');
+      return;
+    }
+    if (setupPassword !== setupConfirmPassword) {
+      setAuthError('Les deux mots de passe ne correspondent pas.');
+      return;
+    }
+    if (setupRecoveryPin.length < 4) {
+      setAuthError('Veuillez définir un code PIN de récupération à 6 chiffres.');
+      return;
+    }
+
+    setIsLoading(true);
+    setAuthError(null);
+
+    try {
+      const cleanEmail = emailInput.trim().toLowerCase();
+      const passwordHash = await hashSecret(setupPassword);
+      const recoveryPinHash = await hashSecret(setupRecoveryPin);
+
+      const newConfig: AdminSecurityConfig = {
+        email: cleanEmail,
+        passwordHash,
+        recoveryPinHash,
+        updatedAt: new Date().toISOString(),
+        isInitialized: true,
+      };
+
+      // Save to Firestore
+      try {
+        await setDoc(doc(db, 'settings', 'admin_auth'), newConfig);
+      } catch (err) {
+        console.warn('Firestore setDoc admin_auth notice:', err);
+      }
+
+      // Save to localStorage
+      localStorage.setItem(ADMIN_SECURITY_STORAGE_KEY, JSON.stringify(newConfig));
+      setSecurityConfig(newConfig);
+
+      // Authenticate in Firebase
+      try {
+        await createUserWithEmailAndPassword(auth, cleanEmail, setupPassword);
+      } catch {
+        try {
+          await signInWithEmailAndPassword(auth, cleanEmail, setupPassword);
+        } catch {
+          if (!auth.currentUser) {
+            await signInAnonymously(auth);
+          }
+        }
+      }
+
+      setAuthSuccessMessage('✅ Accès administrateur configuré avec succès ! Connexion en cours...');
+      setTimeout(() => {
+        grantAccess(cleanEmail);
+      }, 800);
+    } catch (err: any) {
+      setAuthError(`Erreur lors de la configuration : ${err?.message || 'Veuillez réessayer.'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // --- 2. REGULAR LOGIN HANDLER ---
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (lockoutRemainingSeconds > 0) return;
 
@@ -161,7 +263,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
       return;
     }
     if (!cleanPassword || cleanPassword.length < 6) {
-      setAuthError('Le mot de passe doit comporter au moins 6 caractères.');
+      setAuthError('Veuillez saisir votre mot de passe.');
       return;
     }
 
@@ -169,29 +271,26 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
     setAuthError(null);
     setAuthSuccessMessage(null);
 
-    const customPassword = localStorage.getItem('maison_vans_custom_admin_password');
-    const isMasterPassword = MASTER_PASSWORDS.includes(cleanPassword) || (customPassword && customPassword === cleanPassword);
-
     try {
-      // 1. Try Firebase standard sign-in
-      await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
-      await grantAccess(cleanEmail);
-    } catch (firebaseErr: any) {
-      const code = firebaseErr?.code || '';
+      let isVerified = false;
 
-      // 2. If user not found and password is valid, try auto-creating the account in Firebase
-      if ((code === 'auth/user-not-found' || code === 'auth/invalid-credential') && (isMasterPassword || cleanPassword.length >= 6)) {
+      // A. Verify against cryptographic hash stored in Firestore/localStorage
+      if (securityConfig?.passwordHash) {
+        isVerified = await verifySecret(cleanPassword, securityConfig.passwordHash);
+      }
+
+      // B. Fallback check: Firebase Auth verification
+      if (!isVerified) {
         try {
-          await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
-          await grantAccess(cleanEmail);
-          return;
+          await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+          isVerified = true;
         } catch {
-          // Fall through to master password check
+          // not verified
         }
       }
 
-      // 3. Fallback: If password matches master password or custom password, authenticate locally & anonymously in Firebase
-      if (isMasterPassword) {
+      if (isVerified) {
+        // Ensure Firebase session is active for Firestore rules
         try {
           if (!auth.currentUser) {
             await signInAnonymously(auth);
@@ -203,29 +302,68 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
       } else {
         recordFailedAttempt();
       }
+    } catch (err: any) {
+      recordFailedAttempt();
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Authenticate via 6-Digit PIN Code
-  const handlePinLogin = async (e: React.FormEvent) => {
+  // --- 3. RECOVERY / FORGOT PASSWORD HANDLER (Instant on screen) ---
+  const handleRecovery = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (lockoutRemainingSeconds > 0) return;
+    if (!securityConfig?.recoveryPinHash) {
+      setAuthError('Aucun code de récupération n’a été configuré. Veuillez réinitialiser la sécurité.');
+      return;
+    }
 
-    const cleanPin = pinInput.trim();
+    const cleanPin = recoveryPinInput.trim();
     if (cleanPin.length < 4) {
-      setAuthError('Veuillez saisir votre code PIN à 6 chiffres.');
+      setAuthError('Veuillez saisir votre code PIN de récupération.');
+      return;
+    }
+
+    if (newPasswordInput.length < 6) {
+      setAuthError('Le nouveau mot de passe doit comporter au moins 6 caractères.');
+      return;
+    }
+
+    if (newPasswordInput !== confirmNewPasswordInput) {
+      setAuthError('Les deux nouveaux mots de passe ne correspondent pas.');
       return;
     }
 
     setIsLoading(true);
     setAuthError(null);
 
-    const customPin = localStorage.getItem('maison_vans_custom_admin_pin');
-    const isMasterPin = MASTER_PINS.includes(cleanPin) || (customPin && customPin === cleanPin);
+    try {
+      const isPinValid = await verifySecret(cleanPin, securityConfig.recoveryPinHash);
+      if (!isPinValid) {
+        setAuthError('Code PIN de récupération incorrect. Vérifiez votre code secret.');
+        setIsLoading(false);
+        return;
+      }
 
-    if (isMasterPin) {
+      // PIN is valid: update password hash
+      const newHash = await hashSecret(newPasswordInput);
+      const updatedConfig: AdminSecurityConfig = {
+        ...securityConfig,
+        passwordHash: newHash,
+        updatedAt: new Date().toISOString(),
+        isInitialized: true,
+      };
+
+      // Save to Firestore & local storage
+      try {
+        await setDoc(doc(db, 'settings', 'admin_auth'), updatedConfig);
+      } catch (err) {
+        console.warn('Firestore update password hash notice:', err);
+      }
+      localStorage.setItem(ADMIN_SECURITY_STORAGE_KEY, JSON.stringify(updatedConfig));
+      setSecurityConfig(updatedConfig);
+
+      // Authenticate in Firebase
+      const cleanEmail = emailInput.trim().toLowerCase();
       try {
         if (!auth.currentUser) {
           await signInAnonymously(auth);
@@ -233,97 +371,35 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
       } catch {
         // offline
       }
-      await grantAccess(settings.email || 'mutangilwaivan@gmail.com');
-    } else {
-      recordFailedAttempt();
-    }
-    setIsLoading(false);
-  };
 
-  // Reset Password via PIN (Instant on screen)
-  const handleResetViaPin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanPin = resetPinInput.trim();
-    const customPin = localStorage.getItem('maison_vans_custom_admin_pin');
-    const isMasterPin = MASTER_PINS.includes(cleanPin) || (customPin && customPin === cleanPin);
-
-    if (!isMasterPin) {
-      setAuthError('Code PIN incorrect. Utilisez le code secret Atelier (ex: 243842 ou 842732).');
-      return;
-    }
-
-    if (resetNewPassword.length < 6) {
-      setAuthError('Le nouveau mot de passe doit contenir au moins 6 caractères.');
-      return;
-    }
-
-    if (resetNewPassword !== resetConfirmPassword) {
-      setAuthError('Les deux mots de passe ne correspondent pas.');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // Save new custom password
-      localStorage.setItem('maison_vans_custom_admin_password', resetNewPassword);
-      
-      // Try to create/sync Firebase user if possible
-      const cleanEmail = emailInput.trim().toLowerCase();
-      try {
-        await createUserWithEmailAndPassword(auth, cleanEmail, resetNewPassword);
-      } catch {
-        try {
-          await signInWithEmailAndPassword(auth, cleanEmail, resetNewPassword);
-        } catch {
-          if (!auth.currentUser) {
-            await signInAnonymously(auth);
-          }
-        }
-      }
-
-      setAuthSuccessMessage('✅ Mot de passe mis à jour avec succès ! Connexion immédiate en cours...');
+      setAuthSuccessMessage('✅ Votre mot de passe a été réinitialisé avec succès ! Connexion immédiate...');
       setTimeout(() => {
         grantAccess(cleanEmail);
       }, 1000);
-    } catch {
-      setAuthError('Erreur lors de la réinitialisation. Veuillez réessayer.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Reset Password via Firebase Email Link
-  const handleResetViaEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanEmail = emailInput.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setAuthError('Veuillez saisir une adresse email valide.');
-      return;
-    }
-
-    setIsLoading(true);
-    setAuthError(null);
-    try {
-      const actionCodeSettings = {
-        url: window.location.origin + '/#admin',
-        handleCodeInApp: false,
-      };
-      await sendPasswordResetEmail(auth, cleanEmail, actionCodeSettings);
-      setAuthSuccessMessage(
-        `✅ Un email avec le lien de réinitialisation a été envoyé à ${cleanEmail}. Vérifiez votre boîte de réception et vos spams.`
-      );
-      setShowResetModal(false);
     } catch (err: any) {
-      const code = err?.code || '';
-      if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
-        setAuthError('Cette adresse email n\'est pas encore enregistrée sur Firebase. Utilisez l\'option "Code PIN" pour définir votre mot de passe instantanément.');
-      } else {
-        setAuthError(`Erreur : ${err?.message || 'Vérifiez votre connexion internet.'}`);
-      }
+      setAuthError(`Erreur lors de la réinitialisation : ${err?.message || 'Réessayez.'}`);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const whatsappHelpUrl = generateWhatsAppLink(
+    settings.whatsappNumber,
+    `Bonjour Vanessa ✨\nJe souhaite obtenir de l'aide pour réinitialiser l'accès confidentiel à l'Atelier Digital Van's Creation.`
+  );
+
+  if (isCheckingConfig) {
+    return (
+      <section className="py-20 bg-[#FAF8F5] min-h-[70vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-[#8C7A6B]">
+          <RefreshCw className="w-6 h-6 animate-spin text-[#C5A880]" />
+          <span className="text-xs tracking-wider uppercase font-semibold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            Vérification de la sécurité Atelier...
+          </span>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="admin-login-screen" className="py-12 sm:py-20 bg-[#FAF8F5] min-h-[85vh] flex items-center justify-center px-4 select-none">
@@ -338,34 +414,29 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
             <ShieldCheck className="w-6 h-6" />
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-[#181512] tracking-wide" style={{ fontFamily: "'Cinzel', serif" }}>
-            Espace Atelier Privé
+            {viewMode === 'setup' ? 'Configuration de l’Atelier' : viewMode === 'forgot_password' ? 'Récupération d’Accès' : 'Espace Atelier Privé'}
           </h2>
           <p className="text-xs text-[#6B5F54] leading-relaxed" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Accès confidentiel réservé à la direction de la Maison Van's Creation.
+            {viewMode === 'setup'
+              ? 'Définissez vos identifiants confidentiels d’accès pour la Maison Van’s Creation.'
+              : viewMode === 'forgot_password'
+              ? 'Réinitialisez votre mot de passe instantanément grâce à votre code PIN secret.'
+              : 'Accès sécurisé réservé à la direction de la Maison Van’s Creation.'}
           </p>
         </div>
 
-        {/* Lockout Warning Banner with Quick Unlock */}
+        {/* Lockout Banner */}
         {lockoutRemainingSeconds > 0 && (
-          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs space-y-2">
-            <div className="flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold">Accès temporairement verrouillé</p>
-                <p className="mt-0.5">Veuillez patienter <strong>{lockoutRemainingSeconds}s</strong> avant de réessayer.</p>
-              </div>
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Accès temporairement suspendu</p>
+              <p className="mt-0.5">Veuillez patienter <strong>{lockoutRemainingSeconds}s</strong> avant de réessayer.</p>
             </div>
-            <button
-              type="button"
-              onClick={clearFailedAttempts}
-              className="text-[11px] font-bold text-rose-700 underline hover:text-rose-900 cursor-pointer block text-right"
-            >
-              Débloquer immédiatement
-            </button>
           </div>
         )}
 
-        {/* Success Banner */}
+        {/* Success Message Banner */}
         {authSuccessMessage && (
           <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs flex items-start gap-2.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
@@ -373,7 +444,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
           </div>
         )}
 
-        {/* Error Banner */}
+        {/* Error Message Banner */}
         {authError && (
           <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
@@ -381,35 +452,9 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
           </div>
         )}
 
-        {/* Auth Mode Tabs */}
-        {!showResetModal && (
-          <div className="grid grid-cols-2 p-1 bg-[#FAF8F5] rounded-2xl border border-[#E8E1D7] text-xs font-bold text-[#8C7A6B]">
-            <button
-              type="button"
-              onClick={() => { setAuthMode('password'); setAuthError(null); }}
-              className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                authMode === 'password' ? 'bg-[#181512] text-[#FAF8F5] shadow-sm' : 'hover:text-[#181512]'
-              }`}
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Mot de Passe</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setAuthMode('pin'); setAuthError(null); }}
-              className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                authMode === 'pin' ? 'bg-[#181512] text-[#FAF8F5] shadow-sm' : 'hover:text-[#181512]'
-              }`}
-            >
-              <Hash className="w-3.5 h-3.5" />
-              <span>Code PIN (6 chiffres)</span>
-            </button>
-          </div>
-        )}
-
-        {/* Form 1: Password Login */}
-        {!showResetModal && authMode === 'password' && (
-          <form onSubmit={handlePasswordLogin} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        {/* --- VIEW 1: REGULAR LOGIN FORM --- */}
+        {viewMode === 'login' && (
+          <form onSubmit={handleLogin} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             <div>
               <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
                 Identifiant Administrateur
@@ -436,7 +481,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                 </label>
                 <button
                   type="button"
-                  onClick={() => { setShowResetModal(true); setAuthError(null); }}
+                  onClick={() => { setViewMode('forgot_password'); setAuthError(null); }}
                   className="text-[10.5px] text-[#C5A880] hover:text-[#181512] transition-colors font-medium cursor-pointer"
                 >
                   Mot de passe oublié ?
@@ -474,7 +519,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="rounded text-[#1B4332] focus:ring-[#1B4332]"
                 />
-                <span>Mémoriser ma session Atelier</span>
+                <span>Mémoriser ma session sécurisée</span>
               </label>
             </div>
 
@@ -486,7 +531,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
               {isLoading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin text-[#C5A880]" />
-                  <span>Connexion en cours...</span>
+                  <span>Vérification sécurisée...</span>
                 </>
               ) : (
                 <>
@@ -498,229 +543,174 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
           </form>
         )}
 
-        {/* Form 2: PIN Code Login */}
-        {!showResetModal && authMode === 'pin' && (
-          <form onSubmit={handlePinLogin} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E8E1D7] text-xs text-[#5C5247]">
-              Saisissez votre code PIN secret à 6 chiffres pour accéder directement au tableau de bord.
+        {/* --- VIEW 2: INITIAL SETUP FORM --- */}
+        {viewMode === 'setup' && (
+          <form onSubmit={handleInitialSetup} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
+              ✨ Bienvenue dans votre Atelier Digital. Définissez votre mot de passe d'accès personnel et un code PIN de récupération à 6 chiffres pour sécuriser votre espace.
             </div>
 
             <div>
               <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                Code PIN Confidentiel (6 chiffres)
+                Adresse Email Administrateur
               </label>
-              <div className="relative">
-                <input
-                  type="password"
-                  required
-                  maxLength={6}
-                  disabled={lockoutRemainingSeconds > 0 || isLoading}
-                  value={pinInput}
-                  onChange={(e) => { setPinInput(e.target.value.replace(/\D/g, '')); setAuthError(null); }}
-                  placeholder="243842"
-                  className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-3 pl-10 text-center text-lg tracking-[0.3em] font-mono text-[#181512] placeholder-[#A39688] focus:outline-none focus:border-[#1B4332] transition-all disabled:opacity-50"
-                />
-                <Hash className="w-4 h-4 text-[#8C7A6B] absolute left-3.5 top-3.5 pointer-events-none" />
-              </div>
+              <input
+                type="email"
+                required
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                placeholder="mutangilwaivan@gmail.com"
+                className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2.5 text-xs text-[#181512] focus:outline-none focus:border-[#1B4332]"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+                Nouveau Mot de Passe (Min. 6 caractères)
+              </label>
+              <input
+                type="password"
+                required
+                value={setupPassword}
+                onChange={(e) => setSetupPassword(e.target.value)}
+                placeholder="Votre mot de passe confidentiel"
+                className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2.5 text-xs text-[#181512] focus:outline-none focus:border-[#1B4332]"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+                Confirmer le Mot de Passe
+              </label>
+              <input
+                type="password"
+                required
+                value={setupConfirmPassword}
+                onChange={(e) => setSetupConfirmPassword(e.target.value)}
+                placeholder="Retapez le mot de passe"
+                className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2.5 text-xs text-[#181512] focus:outline-none focus:border-[#1B4332]"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+                Code PIN Secret de Récupération (6 chiffres)
+              </label>
+              <input
+                type="password"
+                required
+                maxLength={6}
+                value={setupRecoveryPin}
+                onChange={(e) => setSetupRecoveryPin(e.target.value.replace(/\D/g, ''))}
+                placeholder="Ex: 842732"
+                className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2.5 text-center text-sm font-mono tracking-[0.25em] text-[#181512] focus:outline-none focus:border-[#1B4332]"
+              />
+              <p className="text-[10px] text-[#8C7A6B] mt-1">
+                Ce code PIN à 6 chiffres vous permettra de réinitialiser votre mot de passe immédiatement en cas d'oubli sans dépendre d'un email.
+              </p>
             </div>
 
             <button
               type="submit"
-              disabled={isLoading || lockoutRemainingSeconds > 0 || pinInput.length < 4}
-              className="w-full py-3.5 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-[0.16em] shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
+              disabled={isLoading || setupPassword.length < 6 || setupRecoveryPin.length < 4}
+              className="w-full py-3.5 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-[0.16em] shadow-md transition-all cursor-pointer disabled:opacity-50"
             >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-[#C5A880]" />
-                  <span>Validation du Code...</span>
-                </>
-              ) : (
-                <>
-                  <Unlock className="w-4 h-4 text-[#C5A880]" />
-                  <span>Déverrouiller l'Atelier</span>
-                </>
-              )}
+              {isLoading ? 'Configuration en cours...' : 'Activer mon Accès Sécurisé'}
             </button>
           </form>
         )}
 
-        {/* Modal: Forgot Password / Recovery */}
-        {showResetModal && (
-          <div className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            <div className="flex items-center justify-between border-b border-[#F0EAE1] pb-2">
-              <h3 className="text-sm font-bold text-[#181512] flex items-center gap-1.5">
-                <KeyRound className="w-4 h-4 text-[#C5A880]" />
-                <span>Récupération d'Accès</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => { setShowResetModal(false); setAuthError(null); }}
-                className="text-xs text-[#8C7A6B] hover:text-[#181512] cursor-pointer"
-              >
-                ✕ Fermer
-              </button>
+        {/* --- VIEW 3: FORGOT PASSWORD / RECOVERY FORM --- */}
+        {viewMode === 'forgot_password' && (
+          <form onSubmit={handleRecovery} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <div className="p-3 bg-[#FAF8F5] border border-[#E8E1D7] rounded-xl text-xs text-[#5C5247] leading-relaxed">
+              🔑 Saisissez votre <strong>Code PIN Secret de Récupération (6 chiffres)</strong> défini lors de la configuration pour choisir immédiatement un nouveau mot de passe.
             </div>
 
-            {/* Reset Tabs */}
-            <div className="grid grid-cols-2 p-1 bg-[#FAF8F5] rounded-xl border border-[#E8E1D7] text-xs font-bold text-[#8C7A6B]">
-              <button
-                type="button"
-                onClick={() => { setResetMode('pin'); setAuthError(null); }}
-                className={`py-1.5 rounded-lg transition-all cursor-pointer ${
-                  resetMode === 'pin' ? 'bg-[#181512] text-white shadow-xs' : 'hover:text-[#181512]'
-                }`}
-              >
-                Par Code PIN (Direct)
-              </button>
-              <button
-                type="button"
-                onClick={() => { setResetMode('email'); setAuthError(null); }}
-                className={`py-1.5 rounded-lg transition-all cursor-pointer ${
-                  resetMode === 'email' ? 'bg-[#181512] text-white shadow-xs' : 'hover:text-[#181512]'
-                }`}
-              >
-                Par Lien Email
-              </button>
+            <div>
+              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+                Code PIN Secret (6 chiffres)
+              </label>
+              <input
+                type="password"
+                required
+                maxLength={6}
+                value={recoveryPinInput}
+                onChange={(e) => setRecoveryPinInput(e.target.value.replace(/\D/g, ''))}
+                placeholder="••••••"
+                className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2.5 text-center text-sm font-mono tracking-[0.25em] text-[#181512] focus:outline-none focus:border-[#1B4332]"
+              />
             </div>
 
-            {/* Reset Option 1: Instant via PIN */}
-            {resetMode === 'pin' ? (
-              <form onSubmit={handleResetViaPin} className="space-y-3">
-                <div className="p-2.5 bg-amber-50/70 border border-amber-200 rounded-xl text-[11px] text-amber-900">
-                  💡 Entrez le code secret Atelier (par défaut : <strong>243842</strong> ou <strong>842732</strong>) pour définir instantanément votre nouveau mot de passe.
-                </div>
+            <div>
+              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+                Nouveau Mot de Passe
+              </label>
+              <input
+                type="password"
+                required
+                value={newPasswordInput}
+                onChange={(e) => setNewPasswordInput(e.target.value)}
+                placeholder="Min. 6 caractères"
+                className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2.5 text-xs text-[#181512] focus:outline-none focus:border-[#1B4332]"
+              />
+            </div>
 
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                    Code PIN Secret (6 chiffres)
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    maxLength={6}
-                    value={resetPinInput}
-                    onChange={(e) => setResetPinInput(e.target.value.replace(/\D/g, ''))}
-                    placeholder="243842"
-                    className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-3 py-2 text-center text-sm font-mono tracking-[0.2em]"
-                  />
-                </div>
+            <div>
+              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
+                Confirmer le Nouveau Mot de Passe
+              </label>
+              <input
+                type="password"
+                required
+                value={confirmNewPasswordInput}
+                onChange={(e) => setConfirmNewPasswordInput(e.target.value)}
+                placeholder="Retapez le nouveau mot de passe"
+                className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2.5 text-xs text-[#181512] focus:outline-none focus:border-[#1B4332]"
+              />
+            </div>
 
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                    Nouveau Mot de Passe
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={resetNewPassword}
-                    onChange={(e) => setResetNewPassword(e.target.value)}
-                    placeholder="Min. 6 caractères"
-                    className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-3 py-2 text-xs"
-                  />
-                </div>
+            <button
+              type="submit"
+              disabled={isLoading || recoveryPinInput.length < 4 || newPasswordInput.length < 6}
+              className="w-full py-3.5 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-[0.16em] shadow-md transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isLoading ? 'Réinitialisation en cours...' : 'Réinitialiser & Me Connecter'}
+            </button>
 
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                    Confirmer le Nouveau Mot de Passe
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={resetConfirmPassword}
-                    onChange={(e) => setResetConfirmPassword(e.target.value)}
-                    placeholder="Retapez le mot de passe"
-                    className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-3 py-2 text-xs"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading || resetPinInput.length < 4 || resetNewPassword.length < 6}
-                  className="w-full py-3 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-wider shadow-md transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {isLoading ? 'Mise à jour en cours...' : 'Enregistrer & Me Connecter'}
-                </button>
-              </form>
-            ) : (
-              /* Reset Option 2: Firebase Email Link */
-              <form onSubmit={handleResetViaEmail} className="space-y-3">
-                <div className="p-2.5 bg-[#FAF8F5] border border-[#E8E1D7] rounded-xl text-[11px] text-[#5C5247]">
-                  Un lien sécurisé de réinitialisation vous sera envoyé par email.
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                    Adresse Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="mutangilwaivan@gmail.com"
-                    className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-3 py-2 text-xs"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full py-3 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-wider shadow-md transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {isLoading ? 'Envoi...' : 'Envoyer le lien par Email'}
-                </button>
-              </form>
-            )}
+            {/* Direct WhatsApp Support fallback */}
+            <div className="pt-2 text-center">
+              <a
+                href={whatsappHelpUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-[#25D366] hover:underline"
+              >
+                <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                <span>Code PIN oublié ? Contacter sur WhatsApp</span>
+              </a>
+            </div>
 
             <button
               type="button"
-              onClick={() => { setShowResetModal(false); setAuthError(null); }}
+              onClick={() => { setViewMode('login'); setAuthError(null); }}
               className="w-full text-center text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors py-1 cursor-pointer"
             >
               ← Retour à l'écran de connexion
             </button>
-          </div>
+          </form>
         )}
 
-        {/* Credentials Emergency Help Tooltip / Accordion */}
-        <div className="pt-2 border-t border-[#F0EAE1] space-y-2">
+        {/* Public Catalog Link */}
+        <div className="text-center pt-2 border-t border-[#F0EAE1]">
           <button
             type="button"
-            onClick={() => setShowCredentialsHelp(!showCredentialsHelp)}
-            className="w-full flex items-center justify-center gap-1 text-[11px] text-[#8C7A6B] hover:text-[#181512] transition-colors cursor-pointer"
+            onClick={onCancel}
+            className="text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors underline cursor-pointer"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            <HelpCircle className="w-3 h-3 text-[#C5A880]" />
-            <span>Identifiants & Codes de secours Atelier</span>
+            ← Retour au catalogue public
           </button>
-
-          {showCredentialsHelp && (
-            <div className="p-3 bg-[#FAF8F5] border border-[#E8E1D7] rounded-2xl text-[11px] text-[#5C5247] space-y-1.5 animate-fadeIn">
-              <p className="font-bold text-[#181512]">Accès de secours préconfigurés :</p>
-              <div className="flex items-center justify-between py-0.5 border-b border-[#E8E1D7]">
-                <span>Code PIN rapide :</span>
-                <strong className="font-mono text-[#181512]">243842</strong>
-              </div>
-              <div className="flex items-center justify-between py-0.5 border-b border-[#E8E1D7]">
-                <span>Code PIN alternatif :</span>
-                <strong className="font-mono text-[#181512]">842732</strong>
-              </div>
-              <div className="flex items-center justify-between py-0.5">
-                <span>Mot de passe maître :</span>
-                <strong className="font-mono text-[#181512]">Vanessa2026!</strong>
-              </div>
-            </div>
-          )}
-
-          <div className="text-center pt-1">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors underline cursor-pointer"
-              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            >
-              ← Retour au catalogue public
-            </button>
-          </div>
         </div>
 
       </div>
