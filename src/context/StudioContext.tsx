@@ -194,23 +194,31 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   });
 
-  // Strictly monitor Firebase Auth state for authorized admin email
-  const AUTHORIZED_EMAILS = ['mutangilwaivan@gmail.com', 'contact@vans-creation.com'];
-
+  // Monitor Admin Session & Persistence
   useEffect(() => {
-    const unsubAuth = onAuthStateChanged(auth, (user) => {
-      if (user && !user.isAnonymous && user.email && AUTHORIZED_EMAILS.includes(user.email.toLowerCase())) {
+    const checkSession = () => {
+      const session = localStorage.getItem('maison_vans_admin_session');
+      const isAuth = localStorage.getItem('maison_vans_admin_auth') === 'true' || localStorage.getItem(`${STORAGE_KEY}_admin_auth`) === 'true';
+      if (session && isAuth) {
+        try {
+          const parsed = JSON.parse(session);
+          if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+            setAdminAuthenticated(false);
+            localStorage.removeItem(`${STORAGE_KEY}_admin_auth`);
+            localStorage.removeItem('maison_vans_admin_auth');
+            localStorage.removeItem('maison_vans_admin_session');
+          } else {
+            setAdminAuthenticated(true);
+          }
+        } catch {
+          setAdminAuthenticated(isAuth);
+        }
+      } else if (isAuth) {
         setAdminAuthenticated(true);
-        localStorage.setItem(`${STORAGE_KEY}_admin_auth`, 'true');
-        localStorage.setItem('maison_vans_admin_auth', 'true');
-      } else {
-        setAdminAuthenticated(false);
-        localStorage.removeItem(`${STORAGE_KEY}_admin_auth`);
-        localStorage.removeItem('maison_vans_admin_auth');
-        localStorage.removeItem('maison_vans_admin_session');
       }
-    });
-    return () => unsubAuth();
+    };
+
+    checkSession();
   }, []);
 
   // Real-time Firestore Subscriptions with local cache resilience

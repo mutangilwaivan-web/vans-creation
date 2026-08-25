@@ -9,32 +9,28 @@ import {
   CheckCircle2, 
   KeyRound, 
   RefreshCw,
+  UserCheck,
+  RotateCcw,
   Sparkles,
-  Send,
-  UserPlus,
-  ArrowRight,
-  ExternalLink
+  ArrowRight
 } from 'lucide-react';
 import { useStudio } from '../context/StudioContext';
+import { db } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { 
-  auth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink
-} from '../lib/firebase';
+  hashPassword, 
+  verifyPassword, 
+  AdminAuthConfig, 
+  ADMIN_AUTH_STORAGE_KEY 
+} from '../lib/security';
 
 interface AdminAuthScreenProps {
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-const AUTHORIZED_ADMIN_EMAILS = [
-  'mutangilwaivan@gmail.com',
-  'contact@vans-creation.com'
-];
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 60 * 1000; // 1 minute lockout
 
 export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
   onSuccess,
@@ -42,9 +38,17 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
 }) => {
   const { settings, setAdminAuthenticated } = useStudio();
   
-  // Auth Modes: 'login_password' | 'magic_link' | 'forgot_password' | 'register'
-  const [authMode, setAuthMode] = useState<'login_password' | 'magic_link' | 'forgot_password' | 'register'>('login_password');
-  
+  // Security Config from Firestore
+  const [authConfig, setAuthConfig] = useState<AdminAuthConfig | null>(() => {
+    const saved = localStorage.getItem(ADMIN_AUTH_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [isCheckingConfig, setIsCheckingConfig] = useState(true);
+
+  // Mode: 'login' | 'setup' | 'reset'
+  const [viewMode, setViewMode] = useState<'login' | 'setup' | 'reset'>('login');
+
+  // Form Inputs
   const [emailInput, setEmailInput] = useState(settings.email || 'mutangilwaivan@gmail.com');
   const [passwordInput, setPasswordInput] = useState('');
   const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
@@ -56,40 +60,98 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
   const [authSuccessMessage, setAuthSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Auto-detect Magic Link sign-in on page load
+  // Lockout State
+  const [failedAttempts, setFailedAttempts] = useState<number>(() => {
+    const saved = localStorage.getItem('maison_vans_auth_failed_attempts');
+    return saved ? parseInt(saved, 10) || 0 : 0;
+  });
+  const [lockoutUntil, setLockoutUntil] = useState<number>(() => {
+    const saved = localStorage.getItem('maison_vans_auth_lockout_until');
+    return saved ? parseInt(saved, 10) || 0 : 0;
+  });
+  const [lockoutRemainingSeconds, setLockoutRemainingSeconds] = useState<number>(0);
+
+  // Fetch security configuration from Firestore on mount
   useEffect(() => {
-    const handleEmailLinkSignIn = async () => {
-      if (isSignInWithEmailLink(auth, window.location.href)) {
-        setIsLoading(true);
-        let email = localStorage.getItem('maison_vans_email_for_signin');
-        if (!email) {
-          email = window.prompt('Veuillez confirmer votre adresse email administrateur :') || '';
-        }
-        if (email) {
-          try {
-            const cleanEmail = email.trim().toLowerCase();
-            const result = await signInWithEmailLink(auth, cleanEmail, window.location.href);
-            localStorage.removeItem('maison_vans_email_for_signin');
-            
-            // Verify authorized email
-            if (result.user?.email && AUTHORIZED_ADMIN_EMAILS.includes(result.user.email.toLowerCase())) {
-              grantAccess(result.user.email);
-            } else {
-              setAuthError('Cette adresse email n’est pas autorisée à administrer l’Atelier.');
-            }
-          } catch (err: any) {
-            setAuthError(`Lien de connexion expiré ou invalide : ${err?.message || 'Veuillez en demander un nouveau.'}`);
-          } finally {
-            setIsLoading(false);
+    let isMounted = true;
+    const fetchConfig = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'admin_auth');
+        const snap = await getDoc(docRef);
+        if (snap.exists() && isMounted) {
+          const data = snap.data() as AdminAuthConfig;
+          setAuthConfig(data);
+          localStorage.setItem(ADMIN_AUTH_STORAGE_KEY, JSON.stringify(data));
+          if (data.isConfigured && data.passwordHash) {
+            setViewMode('login');
+          } else {
+            setViewMode('setup');
           }
+        } else if (isMounted) {
+          const localSaved = localStorage.getItem(ADMIN_AUTH_STORAGE_KEY);
+          if (!localSaved) {
+            setViewMode('setup');
+          } else {
+            setViewMode('login');
+          }
+        }
+      } catch (err) {
+        console.warn('Firestore load security notice:', err);
+      } finally {
+        if (isMounted) setIsCheckingConfig(false);
+      }
+    };
+
+    fetchConfig();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Lockout Countdown Timer
+  useEffect(() => {
+    const checkLockout = () => {
+      const now = Date.now();
+      if (lockoutUntil > now) {
+        setLockoutRemainingSeconds(Math.ceil((lockoutUntil - now) / 1000));
+      } else {
+        setLockoutRemainingSeconds(0);
+        if (lockoutUntil > 0) {
+          setLockoutUntil(0);
+          setFailedAttempts(0);
+          localStorage.removeItem('maison_vans_auth_lockout_until');
+          localStorage.removeItem('maison_vans_auth_failed_attempts');
         }
       }
     };
 
-    handleEmailLinkSignIn();
-  }, []);
+    checkLockout();
+    const timer = setInterval(checkLockout, 1000);
+    return () => clearInterval(timer);
+  }, [lockoutUntil]);
+
+  const recordFailedAttempt = () => {
+    const next = failedAttempts + 1;
+    setFailedAttempts(next);
+    localStorage.setItem('maison_vans_auth_failed_attempts', next.toString());
+
+    if (next >= MAX_FAILED_ATTEMPTS) {
+      const lockTime = Date.now() + LOCKOUT_DURATION_MS;
+      setLockoutUntil(lockTime);
+      localStorage.setItem('maison_vans_auth_lockout_until', lockTime.toString());
+      setAuthError(`Trop de tentatives infructueuses. Accès suspendu temporairement pour des raisons de sécurité.`);
+    } else {
+      setAuthError(`Mot de passe incorrect. (${MAX_FAILED_ATTEMPTS - next} tentative(s) restante(s))`);
+    }
+  };
+
+  const clearFailedAttempts = () => {
+    setFailedAttempts(0);
+    setLockoutUntil(0);
+    localStorage.removeItem('maison_vans_auth_failed_attempts');
+    localStorage.removeItem('maison_vans_auth_lockout_until');
+  };
 
   const grantAccess = (userEmail: string) => {
+    clearFailedAttempts();
     const sessionData = {
       authenticatedAt: new Date().toISOString(),
       email: userEmail,
@@ -103,79 +165,8 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
     onSuccess();
   };
 
-  // 1. STANDARD LOGIN (Email + Password)
-  const handlePasswordLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanEmail = emailInput.trim().toLowerCase();
-    const cleanPassword = passwordInput.trim();
-
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setAuthError('Veuillez saisir une adresse email valide.');
-      return;
-    }
-    if (!cleanPassword || cleanPassword.length < 6) {
-      setAuthError('Le mot de passe doit comporter au moins 6 caractères.');
-      return;
-    }
-
-    setIsLoading(true);
-    setAuthError(null);
-    setAuthSuccessMessage(null);
-
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
-      if (userCredential.user.email) {
-        grantAccess(userCredential.user.email);
-      }
-    } catch (err: any) {
-      const code = err?.code || '';
-      if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
-        setAuthError('Identifiants incorrects ou compte non encore activé. Si vous n’avez pas encore créé votre compte, cliquez sur "Créer / Activer mon compte" ci-dessous.');
-      } else if (code === 'auth/wrong-password') {
-        setAuthError('Mot de passe incorrect. Vérifiez votre saisie ou utilisez "Mot de passe oublié".');
-      } else if (code === 'auth/too-many-requests') {
-        setAuthError('Trop de tentatives infructueuses. Veuillez patienter quelques minutes.');
-      } else {
-        setAuthError(`Erreur de connexion : ${err?.message || 'Vérifiez votre connexion internet.'}`);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 2. MAGIC LINK LOGIN (Passwordless link sent to email)
-  const handleMagicLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanEmail = emailInput.trim().toLowerCase();
-
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setAuthError('Veuillez saisir une adresse email valide.');
-      return;
-    }
-
-    setIsLoading(true);
-    setAuthError(null);
-    setAuthSuccessMessage(null);
-
-    try {
-      const actionCodeSettings = {
-        url: window.location.origin + '/#admin',
-        handleCodeInApp: true,
-      };
-      await sendSignInLinkToEmail(auth, cleanEmail, actionCodeSettings);
-      localStorage.setItem('maison_vans_email_for_signin', cleanEmail);
-      setAuthSuccessMessage(
-        `✉️ Un lien magique de connexion a été envoyé à ${cleanEmail}. Cliquez sur le lien dans votre email pour vous connecter instantanément ! (Vérifiez également les spams)`
-      );
-    } catch (err: any) {
-      setAuthError(`Erreur lors de l'envoi du lien : ${err?.message || 'Vérifiez votre connexion.'}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 3. ACCOUNT REGISTRATION / FIRST-TIME ACTIVATION
-  const handleRegister = async (e: React.FormEvent) => {
+  // --- 1. SETUP / INITIAL CONFIGURATION ---
+  const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = emailInput.trim().toLowerCase();
     const cleanPassword = passwordInput.trim();
@@ -198,32 +189,53 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
     setAuthSuccessMessage(null);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
-      setAuthSuccessMessage('✅ Votre compte administrateur a été créé et activé sur Firebase avec succès !');
-      setTimeout(() => {
-        grantAccess(userCredential.user.email || cleanEmail);
-      }, 800);
-    } catch (err: any) {
-      const code = err?.code || '';
-      if (code === 'auth/email-already-in-use') {
-        setAuthError('Ce compte existe déjà sur Firebase. Utilisez "Connexion par mot de passe" ou "Mot de passe oublié".');
-      } else if (code === 'auth/weak-password') {
-        setAuthError('Le mot de passe est trop faible. Utilisez au moins 6 caractères variés.');
-      } else {
-        setAuthError(`Erreur de création : ${err?.message || 'Veuillez réessayer.'}`);
+      const salt = `salt_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const pHash = await hashPassword(cleanPassword, salt);
+
+      const newConfig: AdminAuthConfig = {
+        email: cleanEmail,
+        passwordHash: pHash,
+        salt,
+        updatedAt: new Date().toISOString(),
+        isConfigured: true,
+      };
+
+      // Save to Firestore
+      try {
+        await setDoc(doc(db, 'settings', 'admin_auth'), newConfig);
+      } catch (err) {
+        console.warn('Firestore setDoc admin_auth notice:', err);
       }
+
+      // Save to localStorage
+      localStorage.setItem(ADMIN_AUTH_STORAGE_KEY, JSON.stringify(newConfig));
+      setAuthConfig(newConfig);
+
+      setAuthSuccessMessage('✅ Mot de passe administrateur configuré avec succès ! Connexion immédiate...');
+      setTimeout(() => {
+        grantAccess(cleanEmail);
+      }, 700);
+    } catch (err: any) {
+      setAuthError(`Erreur lors de la configuration : ${err?.message || 'Veuillez réessayer.'}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 4. FORGOT PASSWORD (Official Firebase Reset Email)
-  const handleForgotPassword = async (e: React.FormEvent) => {
+  // --- 2. LOGIN WITH PASSWORD ---
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (lockoutRemainingSeconds > 0) return;
+
     const cleanEmail = emailInput.trim().toLowerCase();
+    const cleanPassword = passwordInput.trim();
 
     if (!cleanEmail || !cleanEmail.includes('@')) {
       setAuthError('Veuillez saisir une adresse email valide.');
+      return;
+    }
+    if (!cleanPassword || cleanPassword.length < 6) {
+      setAuthError('Veuillez saisir votre mot de passe d’accès.');
       return;
     }
 
@@ -232,25 +244,54 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
     setAuthSuccessMessage(null);
 
     try {
-      const actionCodeSettings = {
-        url: window.location.origin + '/#admin',
-        handleCodeInApp: false,
-      };
-      await sendPasswordResetEmail(auth, cleanEmail, actionCodeSettings);
-      setAuthSuccessMessage(
-        `📧 Un email officiel de réinitialisation a été envoyé à ${cleanEmail}. Cliquez sur le lien reçu pour choisir votre nouveau mot de passe. (Pensez à vérifier vos spams)`
-      );
-    } catch (err: any) {
-      const code = err?.code || '';
-      if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
-        setAuthError('Aucun compte Firebase n’a été trouvé avec cet email. Vous devez d’abord activer votre compte via "Créer / Activer mon compte".');
-      } else {
-        setAuthError(`Erreur lors de l'envoi : ${err?.message || 'Vérifiez votre connexion internet.'}`);
+      let isVerified = false;
+
+      // 1. Check against Firestore config
+      if (authConfig?.passwordHash && authConfig?.salt) {
+        isVerified = await verifyPassword(cleanPassword, authConfig.passwordHash, authConfig.salt);
       }
+
+      // 2. If not verified from memory, attempt fresh fetch from Firestore
+      if (!isVerified) {
+        try {
+          const snap = await getDoc(doc(db, 'settings', 'admin_auth'));
+          if (snap.exists()) {
+            const data = snap.data() as AdminAuthConfig;
+            setAuthConfig(data);
+            localStorage.setItem(ADMIN_AUTH_STORAGE_KEY, JSON.stringify(data));
+            if (data.passwordHash && data.salt) {
+              isVerified = await verifyPassword(cleanPassword, data.passwordHash, data.salt);
+            }
+          }
+        } catch {
+          // offline
+        }
+      }
+
+      if (isVerified) {
+        grantAccess(cleanEmail);
+      } else {
+        recordFailedAttempt();
+      }
+    } catch (err: any) {
+      recordFailedAttempt();
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isCheckingConfig) {
+    return (
+      <section className="py-20 bg-[#FAF8F5] min-h-[70vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-[#8C7A6B]">
+          <RefreshCw className="w-6 h-6 animate-spin text-[#C5A880]" />
+          <span className="text-xs tracking-wider uppercase font-semibold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            Vérification de la sécurité Atelier...
+          </span>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="admin-login-screen" className="py-12 sm:py-20 bg-[#FAF8F5] min-h-[85vh] flex items-center justify-center px-4 select-none">
@@ -265,18 +306,31 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
             <ShieldCheck className="w-6 h-6" />
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-[#181512] tracking-wide" style={{ fontFamily: "'Cinzel', serif" }}>
-            {authMode === 'register' 
-              ? 'Activation Compte Atelier' 
-              : authMode === 'magic_link' 
-              ? 'Lien Magique par Email' 
-              : authMode === 'forgot_password'
-              ? 'Réinitialisation par Email'
+            {viewMode === 'setup' 
+              ? 'Configuration de l’Atelier' 
+              : viewMode === 'reset'
+              ? 'Nouveau Mot de Passe'
               : 'Espace Atelier Privé'}
           </h2>
           <p className="text-xs text-[#6B5F54] leading-relaxed" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Authentification officielle Firebase réservée à la direction de la Maison Van's Creation.
+            {viewMode === 'setup'
+              ? 'Définissez votre mot de passe confidentiel pour sécuriser l’accès à votre Atelier.'
+              : viewMode === 'reset'
+              ? 'Définissez un nouveau mot de passe administrateur pour votre espace.'
+              : 'Accès sécurisé réservé à la direction de la Maison Van’s Creation.'}
           </p>
         </div>
+
+        {/* Lockout Banner */}
+        {lockoutRemainingSeconds > 0 && (
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Accès temporairement suspendu</p>
+              <p className="mt-0.5">Veuillez patienter <strong>{lockoutRemainingSeconds}s</strong> avant de réessayer.</p>
+            </div>
+          </div>
+        )}
 
         {/* Success Banner */}
         {authSuccessMessage && (
@@ -294,35 +348,9 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
           </div>
         )}
 
-        {/* Auth Method Navigation Tabs */}
-        {authMode !== 'forgot_password' && authMode !== 'register' && (
-          <div className="grid grid-cols-2 p-1 bg-[#FAF8F5] rounded-2xl border border-[#E8E1D7] text-xs font-bold text-[#8C7A6B]">
-            <button
-              type="button"
-              onClick={() => { setAuthMode('login_password'); setAuthError(null); setAuthSuccessMessage(null); }}
-              className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                authMode === 'login_password' ? 'bg-[#181512] text-[#FAF8F5] shadow-sm' : 'hover:text-[#181512]'
-              }`}
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Mot de Passe</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setAuthMode('magic_link'); setAuthError(null); setAuthSuccessMessage(null); }}
-              className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                authMode === 'magic_link' ? 'bg-[#181512] text-[#FAF8F5] shadow-sm' : 'hover:text-[#181512]'
-              }`}
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Lien par Email</span>
-            </button>
-          </div>
-        )}
-
-        {/* --- FORM 1: PASSWORD LOGIN --- */}
-        {authMode === 'login_password' && (
-          <form onSubmit={handlePasswordLogin} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        {/* --- 1. LOGIN FORM --- */}
+        {viewMode === 'login' && (
+          <form onSubmit={handleLogin} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             <div>
               <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
                 Adresse Email Administrateur
@@ -332,7 +360,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                   type="email"
                   required
                   autoComplete="username"
-                  disabled={isLoading}
+                  disabled={lockoutRemainingSeconds > 0 || isLoading}
                   value={emailInput}
                   onChange={(e) => { setEmailInput(e.target.value); setAuthError(null); }}
                   placeholder="mutangilwaivan@gmail.com"
@@ -349,10 +377,10 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                 </label>
                 <button
                   type="button"
-                  onClick={() => { setAuthMode('forgot_password'); setAuthError(null); setAuthSuccessMessage(null); }}
+                  onClick={() => { setViewMode('reset'); setAuthError(null); setAuthSuccessMessage(null); }}
                   className="text-[10.5px] text-[#C5A880] hover:text-[#181512] transition-colors font-medium cursor-pointer"
                 >
-                  Mot de passe oublié ?
+                  Modifier mon mot de passe
                 </button>
               </div>
               
@@ -361,7 +389,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                   type={showPassword ? 'text' : 'password'}
                   required
                   autoComplete="current-password"
-                  disabled={isLoading}
+                  disabled={lockoutRemainingSeconds > 0 || isLoading}
                   value={passwordInput}
                   onChange={(e) => { setPasswordInput(e.target.value); setAuthError(null); }}
                   placeholder="••••••••••••"
@@ -393,13 +421,13 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || lockoutRemainingSeconds > 0}
               className="w-full py-3.5 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-[0.16em] shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
             >
               {isLoading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin text-[#C5A880]" />
-                  <span>Vérification Firebase...</span>
+                  <span>Vérification sécurisée...</span>
                 </>
               ) : (
                 <>
@@ -408,122 +436,14 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                 </>
               )}
             </button>
-
-            <div className="pt-2 border-t border-[#F0EAE1] text-center">
-              <button
-                type="button"
-                onClick={() => { setAuthMode('register'); setAuthError(null); setAuthSuccessMessage(null); }}
-                className="text-xs text-[#8C7A6B] hover:text-[#181512] font-semibold transition-colors cursor-pointer"
-              >
-                Première connexion ? <span className="text-[#C5A880] underline">Créer / Activer mon compte</span>
-              </button>
-            </div>
           </form>
         )}
 
-        {/* --- FORM 2: MAGIC LINK (Passwordless Email Auth) --- */}
-        {authMode === 'magic_link' && (
-          <form onSubmit={handleMagicLink} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        {/* --- 2. INITIAL SETUP / RESET PASSWORD FORM --- */}
+        {(viewMode === 'setup' || viewMode === 'reset') && (
+          <form onSubmit={handleSetup} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
-              ✨ <strong>Connexion par Lien Magique :</strong> Saisissez votre email. Firebase vous envoie un lien sécurisé d'authentification sans mot de passe.
-            </div>
-
-            <div>
-              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                Adresse Email Administrateur
-              </label>
-              <div className="relative">
-                <input
-                  type="email"
-                  required
-                  disabled={isLoading}
-                  value={emailInput}
-                  onChange={(e) => { setEmailInput(e.target.value); setAuthError(null); }}
-                  placeholder="mutangilwaivan@gmail.com"
-                  className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-3 pl-10 text-sm text-[#181512] focus:outline-none focus:border-[#1B4332]"
-                />
-                <Mail className="w-4 h-4 text-[#8C7A6B] absolute left-3.5 top-3.5 pointer-events-none" />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3.5 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-[0.16em] shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-[#C5A880]" />
-                  <span>Envoi du lien en cours...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4 text-[#C5A880]" />
-                  <span>Envoyer mon Lien de Connexion</span>
-                </>
-              )}
-            </button>
-          </form>
-        )}
-
-        {/* --- FORM 3: FORGOT PASSWORD (Password Reset Email) --- */}
-        {authMode === 'forgot_password' && (
-          <form onSubmit={handleForgotPassword} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            <div className="p-3 bg-[#FAF8F5] border border-[#E8E1D7] rounded-xl text-xs text-[#5C5247] leading-relaxed">
-              📧 Saisissez votre adresse email pour recevoir un <strong>lien sécurisé officiel de réinitialisation</strong> de mot de passe envoyé par Firebase.
-            </div>
-
-            <div>
-              <label className="text-[10.5px] font-bold uppercase tracking-wider text-[#8C7A6B] block mb-1">
-                Adresse Email
-              </label>
-              <div className="relative">
-                <input
-                  type="email"
-                  required
-                  disabled={isLoading}
-                  value={emailInput}
-                  onChange={(e) => { setEmailInput(e.target.value); setAuthError(null); }}
-                  placeholder="mutangilwaivan@gmail.com"
-                  className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-3 pl-10 text-sm text-[#181512] focus:outline-none focus:border-[#1B4332]"
-                />
-                <Mail className="w-4 h-4 text-[#8C7A6B] absolute left-3.5 top-3.5 pointer-events-none" />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3.5 bg-[#181512] hover:bg-[#1B4332] text-[#FAF8F5] rounded-xl text-xs font-bold uppercase tracking-[0.16em] shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-[#C5A880]" />
-                  <span>Envoi en cours...</span>
-                </>
-              ) : (
-                <>
-                  <Mail className="w-4 h-4 text-[#C5A880]" />
-                  <span>Envoyer le lien de réinitialisation</span>
-                </>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { setAuthMode('login_password'); setAuthError(null); }}
-              className="w-full text-center text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors py-1 cursor-pointer"
-            >
-              ← Retour à l'écran de connexion
-            </button>
-          </form>
-        )}
-
-        {/* --- FORM 4: ACCOUNT REGISTRATION / INITIAL CREATION --- */}
-        {authMode === 'register' && (
-          <form onSubmit={handleRegister} className="space-y-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-900 leading-relaxed">
-              🔐 <strong>Création de votre Compte Firebase Administrateur :</strong> Définissez votre mot de passe pour enregistrer officiellement votre compte dans la base d'authentification Google Firebase.
+              ✨ <strong>{viewMode === 'setup' ? 'Configuration Initiale' : 'Définition du Mot de Passe'} :</strong> Saisissez votre adresse email et choisissez votre mot de passe d’accès confidentiel (minimum 6 caractères).
             </div>
 
             <div>
@@ -535,7 +455,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                 required
                 disabled={isLoading}
                 value={emailInput}
-                onChange={(e) => { setEmailInput(e.target.value); setAuthError(null); }}
+                onChange={(e) => setEmailInput(e.target.value)}
                 placeholder="mutangilwaivan@gmail.com"
                 className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2.5 text-xs text-[#181512] focus:outline-none focus:border-[#1B4332]"
               />
@@ -550,7 +470,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                 required
                 disabled={isLoading}
                 value={passwordInput}
-                onChange={(e) => { setPasswordInput(e.target.value); setAuthError(null); }}
+                onChange={(e) => setPasswordInput(e.target.value)}
                 placeholder="Votre mot de passe confidentiel"
                 className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2.5 text-xs text-[#181512] focus:outline-none focus:border-[#1B4332]"
               />
@@ -565,7 +485,7 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
                 required
                 disabled={isLoading}
                 value={confirmPasswordInput}
-                onChange={(e) => { setConfirmPasswordInput(e.target.value); setAuthError(null); }}
+                onChange={(e) => setConfirmPasswordInput(e.target.value)}
                 placeholder="Retapez le mot de passe"
                 className="w-full bg-[#FAF8F5] border border-[#E0D7CC] rounded-xl px-4 py-2.5 text-xs text-[#181512] focus:outline-none focus:border-[#1B4332]"
               />
@@ -579,23 +499,25 @@ export const AdminAuthScreen: React.FC<AdminAuthScreenProps> = ({
               {isLoading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin text-[#C5A880]" />
-                  <span>Création en cours sur Firebase...</span>
+                  <span>Enregistrement en cours...</span>
                 </>
               ) : (
                 <>
-                  <UserPlus className="w-4 h-4 text-[#C5A880]" />
-                  <span>Créer mon Compte Administrateur</span>
+                  <UserCheck className="w-4 h-4 text-[#C5A880]" />
+                  <span>Enregistrer & Accéder à l’Atelier</span>
                 </>
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => { setAuthMode('login_password'); setAuthError(null); }}
-              className="w-full text-center text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors py-1 cursor-pointer"
-            >
-              ← Retour à l'écran de connexion
-            </button>
+            {viewMode === 'reset' && (
+              <button
+                type="button"
+                onClick={() => { setViewMode('login'); setAuthError(null); }}
+                className="w-full text-center text-xs text-[#8C7A6B] hover:text-[#181512] transition-colors py-1 cursor-pointer"
+              >
+                ← Annuler et revenir à la connexion
+              </button>
+            )}
           </form>
         )}
 

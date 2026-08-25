@@ -2,56 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Only the authorized administrator email can write to protected collections
-    function isAdmin() {
-      return request.auth != null 
-        && (request.auth.token.email == 'mutangilwaivan@gmail.com' || request.auth.token.email == 'contact@vans-creation.com');
-    }
-
-    // Public read access for showroom catalog & settings
-    match /creations/{creationId} {
-      allow read: if true;
-      // Likes: anyone authenticated can update only likesCount (limited field)
-      // Comments: anyone can add comments but only to the comments array
-      allow update: if isAdmin() 
-        || (request.auth != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount']))
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments']);
-      allow create, delete: if isAdmin();
-    }
-
-    match /inspirations/{inspirationId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /occasions/{occasionId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /testimonials/{testimonialId} {
-      allow read: if true;
-      // Public can create testimonials but with size limits
-      allow create: if request.resource.data.keys().hasAll(['clientName', 'feedback', 'rating'])
-        && request.resource.data.clientName is string
-        && request.resource.data.clientName.size() <= 100
-        && request.resource.data.feedback is string
-        && request.resource.data.feedback.size() <= 1000
-        && request.resource.data.rating is number
-        && request.resource.data.rating >= 1
-        && request.resource.data.rating <= 5;
-      allow update, delete: if isAdmin();
-    }
-
-    match /settings/{settingId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Catch-all: deny all writes except for admin
+    // Allow read and write to all collections
     match /{document=**} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
   }
 }

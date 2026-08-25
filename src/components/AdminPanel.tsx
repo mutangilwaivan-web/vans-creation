@@ -39,7 +39,9 @@ import {
 import { generateWhatsAppLink } from '../data/initialData';
 import { VanessaQuickAddModal } from './VanessaQuickAddModal';
 import { AdminAuthScreen } from './AdminAuthScreen';
-import { auth, signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail } from '../lib/firebase';
+import { db } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { hashPassword, verifyPassword, AdminAuthConfig, ADMIN_AUTH_STORAGE_KEY } from '../lib/security';
 
 type AdminTab = 'creations' | 'inspirations' | 'occasions' | 'testimonials' | 'settings' | 'share-tool' | 'backup';
 
@@ -1915,34 +1917,61 @@ export const AdminPanel: React.FC = () => {
                   setSecurityMessage(null);
 
                   try {
-                    const user = auth.currentUser;
-                    if (!user || !user.email) {
-                      setSecurityError('Session expirée. Veuillez vous reconnecter.');
-                      setIsUpdatingPassword(false);
-                      return;
+                    // Fetch existing config from Firestore
+                    let currentConfig: AdminAuthConfig | null = null;
+                    try {
+                      const snap = await getDoc(doc(db, 'settings', 'admin_auth'));
+                      if (snap.exists()) {
+                        currentConfig = snap.data() as AdminAuthConfig;
+                      }
+                    } catch (err) {
+                      console.warn('Firestore load notice:', err);
                     }
 
-                    // Re-authenticate user before password change (Firebase requirement)
-                    const credential = EmailAuthProvider.credential(user.email, currentAdminPassword);
-                    await reauthenticateWithCredential(user, credential);
+                    if (!currentConfig) {
+                      const localSaved = localStorage.getItem(ADMIN_AUTH_STORAGE_KEY);
+                      if (localSaved) currentConfig = JSON.parse(localSaved);
+                    }
 
-                    // Update password in Firebase Auth
-                    await updatePassword(user, newAdminPassword);
+                    // Verify current password
+                    if (currentConfig?.passwordHash && currentConfig?.salt) {
+                      const isCurrentValid = await verifyPassword(currentAdminPassword, currentConfig.passwordHash, currentConfig.salt);
+                      if (!isCurrentValid) {
+                        setSecurityError('Le mot de passe actuel saisi est incorrect.');
+                        setIsUpdatingPassword(false);
+                        return;
+                      }
+                    }
 
-                    setSecurityMessage('✅ Votre mot de passe Firebase a été mis à jour avec succès !');
+                    // Generate new salt and hash for new password
+                    const salt = `salt_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+                    const passwordHash = await hashPassword(newAdminPassword, salt);
+
+                    const updatedConfig: AdminAuthConfig = {
+                      email: settingsForm.email || 'mutangilwaivan@gmail.com',
+                      passwordHash,
+                      salt,
+                      updatedAt: new Date().toISOString(),
+                      isConfigured: true,
+                    };
+
+                    // Save to Firestore
+                    try {
+                      await setDoc(doc(db, 'settings', 'admin_auth'), updatedConfig);
+                    } catch (err) {
+                      console.warn('Firestore setDoc admin_auth notice:', err);
+                    }
+
+                    // Save to localStorage
+                    localStorage.setItem(ADMIN_AUTH_STORAGE_KEY, JSON.stringify(updatedConfig));
+
+                    setSecurityMessage('✅ Votre mot de passe administrateur a été mis à jour avec succès !');
                     setCurrentAdminPassword('');
                     setNewAdminPassword('');
                     setConfirmAdminPassword('');
                     setTimeout(() => setSecurityMessage(null), 5000);
                   } catch (err: any) {
-                    const code = err?.code || '';
-                    if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-                      setSecurityError('Le mot de passe actuel saisi est incorrect.');
-                    } else if (code === 'auth/weak-password') {
-                      setSecurityError('Le nouveau mot de passe est trop faible (min. 6 caractères).');
-                    } else {
-                      setSecurityError(`Erreur : ${err?.message || 'Vérifiez votre connexion internet.'}`);
-                    }
+                    setSecurityError(`Erreur lors de la mise à jour : ${err?.message || 'Vérifiez votre connexion internet.'}`);
                   } finally {
                     setIsUpdatingPassword(false);
                   }
@@ -2007,32 +2036,6 @@ export const AdminPanel: React.FC = () => {
                     className="px-6 py-2.5 bg-[#181512] hover:bg-[#2C2723] text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm cursor-pointer disabled:opacity-50"
                   >
                     {isUpdatingPassword ? 'Mise à jour...' : 'Mettre à jour le mot de passe'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const user = auth.currentUser;
-                      const email = user?.email || settings.email;
-                      if (!email) {
-                        setSecurityError('Aucune adresse email trouvée.');
-                        return;
-                      }
-                      try {
-                        const actionCodeSettings = {
-                          url: window.location.origin + '/#admin',
-                          handleCodeInApp: false,
-                        };
-                        await sendPasswordResetEmail(auth, email, actionCodeSettings);
-                        setSecurityMessage(`📧 Un email de réinitialisation a été envoyé à ${email}. Vérifiez vos emails (y compris spam).`);
-                        setTimeout(() => setSecurityMessage(null), 8000);
-                      } catch (err: any) {
-                        setSecurityError(`Erreur d'envoi : ${err?.message || 'Réessayez.'}`);
-                      }
-                    }}
-                    className="px-5 py-2.5 bg-[#FAF8F5] hover:bg-[#F0EAE1] text-[#5C5247] border border-[#E0D7CC] rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer"
-                  >
-                    Recevoir un lien par email
                   </button>
                 </div>
               </form>
