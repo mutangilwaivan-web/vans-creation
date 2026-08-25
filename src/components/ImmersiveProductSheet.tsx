@@ -15,7 +15,8 @@ import {
   Star,
   Send,
   MessageSquare,
-  CheckCircle2
+  CheckCircle2,
+  FileText
 } from 'lucide-react';
 import { generateWhatsAppLink, buildCreationOrderMessage } from '../data/initialData';
 import { ShareModal } from './ShareModal';
@@ -117,31 +118,31 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
   );
 
   return (
-    <div className="flex flex-col lg:flex-row h-full max-h-[92vh] bg-[#FAF8F5] overflow-y-auto lg:overflow-hidden select-none font-sans relative">
+    <div className="flex flex-col lg:flex-row w-full h-full lg:max-h-[90vh] bg-[#FAF8F5] overflow-y-auto lg:overflow-hidden select-none font-sans relative">
       
       {/* ========================================================================= */}
-      {/* MOBILE STICKY TOP BAR                                                     */}
+      {/* MOBILE STICKY TOP HEADER                                                  */}
       {/* ========================================================================= */}
-      <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#EAE3DA]">
-        <div className="flex items-center gap-2">
+      <div className="lg:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#EAE3DA] shadow-xs">
+        <div className="flex items-center gap-2 min-w-0">
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1.5 -ml-1 rounded-full text-[#181512] hover:bg-[#EAE3DA] transition-colors cursor-pointer"
-              aria-label="Retour"
+              className="p-2 -ml-1 rounded-full text-[#181512] hover:bg-[#EAE3DA] transition-colors cursor-pointer shrink-0"
+              aria-label="Fermer"
             >
               <X className="w-5 h-5" />
             </button>
           )}
           <span 
-            className="text-xs font-bold uppercase tracking-widest text-[#181512] truncate max-w-[170px]"
+            className="text-xs font-bold uppercase tracking-widest text-[#181512] truncate"
             style={{ fontFamily: "'Cinzel', serif" }}
           >
             {creation.title}
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Like Heart Button */}
           <button
             type="button"
@@ -169,9 +170,9 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* LEFT: MAJESTIC PHOTOGRAPHIC GALLERY                                      */}
+      {/* LEFT: PHOTOGRAPHIC GALLERY (Fluid compact height on mobile, full on PC)  */}
       {/* ========================================================================= */}
-      <div className="lg:w-[52%] relative bg-[#181512] flex flex-col justify-between overflow-hidden aspect-[3/4] sm:aspect-[4/5] lg:aspect-auto shrink-0">
+      <div className="lg:w-[50%] relative bg-[#181512] flex flex-col justify-between overflow-hidden h-72 sm:h-96 lg:h-full shrink-0">
         
         {/* Main Photograph */}
         <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
@@ -213,38 +214,38 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
 
         {/* Gallery Navigation Arrows */}
         {images.length > 1 && (
-          <div className="absolute inset-y-0 inset-x-3 flex items-center justify-between pointer-events-none z-10">
+          <div className="absolute inset-y-0 inset-x-2 flex items-center justify-between pointer-events-none z-10">
             <button
               onClick={() => setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)}
-              className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm pointer-events-auto transition-colors cursor-pointer"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm pointer-events-auto transition-colors cursor-pointer"
               aria-label="Image précédente"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
             <button
               onClick={() => setCurrentImageIndex((prev) => (prev + 1) % images.length)}
-              className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm pointer-events-auto transition-colors cursor-pointer"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm pointer-events-auto transition-colors cursor-pointer"
               aria-label="Image suivante"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         )}
 
         {/* Bottom Thumbnail Strip & Angle Indicator */}
-        <div className="absolute bottom-3 inset-x-3 flex flex-col items-center gap-2 z-10">
-          <span className="text-[10px] text-white/90 bg-black/60 px-3 py-1 rounded-full backdrop-blur-md font-medium tracking-wide">
+        <div className="absolute bottom-2.5 inset-x-2 flex flex-col items-center gap-1.5 z-10">
+          <span className="text-[9.5px] sm:text-[10px] text-white/95 bg-black/70 px-2.5 py-0.5 rounded-full backdrop-blur-md font-medium tracking-wide">
             {currentAngle}
           </span>
           
           {images.length > 1 && (
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-1.5">
               {images.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setCurrentImageIndex(idx)}
-                  className={`w-10 h-12 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                  className={`w-8 h-10 sm:w-10 sm:h-12 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
                     currentImageIndex === idx
                       ? 'border-[#C5A880] scale-105 shadow-md'
                       : 'border-white/30 opacity-70 hover:opacity-100'
@@ -263,9 +264,9 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* RIGHT: CARTEL COUTURE, SOCIAL INTERACTIONS, REVIEWS & CTA                */}
+      {/* RIGHT: EDITORIAL CONTENT, DESCRIPTION, REVIEWS & CTA                    */}
       {/* ========================================================================= */}
-      <div className="lg:w-[48%] p-5 sm:p-7 lg:p-8 flex flex-col justify-between overflow-y-auto pb-28 lg:pb-8">
+      <div className="lg:w-[50%] p-5 sm:p-7 lg:p-8 flex flex-col justify-between overflow-y-visible lg:overflow-y-auto pb-32 lg:pb-8">
         
         <div className="space-y-4">
           
@@ -351,7 +352,7 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
             <button
               type="button"
               onClick={() => setActiveRightTab('details')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeRightTab === 'details'
                   ? 'bg-white text-[#181512] shadow-xs'
                   : 'text-[#6A5E52] hover:text-[#181512]'
@@ -362,7 +363,7 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
             <button
               type="button"
               onClick={() => setActiveRightTab('comments')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeRightTab === 'comments'
                   ? 'bg-white text-[#181512] shadow-xs'
                   : 'text-[#6A5E52] hover:text-[#181512]'
@@ -373,19 +374,29 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
             </button>
           </div>
 
-          {/* TAB 1: FICHE TECHNIQUE COUTURE */}
+          {/* TAB 1: FICHE TECHNIQUE COUTURE & DESCRIPTION */}
           {activeRightTab === 'details' && (
             <div className="space-y-4 animate-in fade-in duration-200">
-              {/* Description */}
-              <p 
-                className="text-xs sm:text-sm text-[#4A423A] leading-relaxed"
-                style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-              >
-                {creation.longDescription || creation.description}
-              </p>
+              
+              {/* DESCRIPTION BLOCK: Clear, High-Contrast & Perfectly Legible on Mobile */}
+              <div className="p-4 sm:p-4.5 rounded-2xl bg-white border border-[#EAE3DA] shadow-xs space-y-1.5">
+                <div 
+                  className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#8C7A6B]"
+                  style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                >
+                  <FileText className="w-3.5 h-3.5 text-[#C5A880]" />
+                  <span>Description du Modèle</span>
+                </div>
+                <p 
+                  className="text-[13px] sm:text-sm text-[#2C241D] leading-relaxed font-normal"
+                  style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                >
+                  {creation.longDescription || creation.description}
+                </p>
+              </div>
 
               {/* Luxury Technical Specifications (Cartel Couture) */}
-              <div className="space-y-3 pt-1">
+              <div className="space-y-3">
                 
                 {/* Haute Couture Line */}
                 <div className="p-3.5 rounded-2xl bg-white border border-[#EAE3DA] space-y-1 shadow-xs">
@@ -466,9 +477,9 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
 
               {/* Custom Options Pill List */}
               {creation.customOptions && creation.customOptions.length > 0 && (
-                <div className="space-y-1.5 pt-1">
+                <div className="p-3.5 rounded-2xl bg-white border border-[#EAE3DA] space-y-1.5 shadow-xs">
                   <span 
-                    className="text-[10px] font-bold uppercase tracking-wider text-[#8C7A6B]"
+                    className="text-[10px] font-bold uppercase tracking-wider text-[#8C7A6B] block"
                     style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                   >
                     Personnalisations Possibles :
@@ -476,7 +487,7 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
                   <ul className="text-xs text-[#5C5248] space-y-1 pl-1">
                     {creation.customOptions.map((opt, i) => (
                       <li key={i} className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#C5A880]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#C5A880] shrink-0" />
                         <span>{opt}</span>
                       </li>
                     ))}
@@ -655,9 +666,9 @@ export const ImmersiveProductSheet: React.FC<ImmersiveProductSheetProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* BOTTOM ACTION BAR (STICKY ON MOBILE, STATIC ON DESKTOP)                  */}
+        {/* BOTTOM ACTION BAR: FIXED ON MOBILE, STATIC ON DESKTOP                    */}
         {/* ========================================================================= */}
-        <div className="fixed bottom-0 inset-x-0 bg-[#FAF8F5]/95 backdrop-blur-md p-4 border-t border-[#EAE3DA] z-30 lg:static lg:p-0 lg:border-t-0 lg:pt-6 lg:mt-6 lg:border-t lg:border-[#EAE3DA] space-y-3">
+        <div className="fixed bottom-0 inset-x-0 bg-[#FAF8F5]/95 backdrop-blur-md p-3.5 sm:p-4 border-t border-[#EAE3DA] z-30 lg:static lg:p-0 lg:border-t-0 lg:pt-6 lg:mt-6 lg:border-t lg:border-[#EAE3DA] space-y-3 shadow-lg lg:shadow-none">
           
           {/* Main WhatsApp Direct Button */}
           <a
